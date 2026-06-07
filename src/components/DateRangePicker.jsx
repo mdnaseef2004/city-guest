@@ -40,11 +40,12 @@ const DateRangePicker = ({ startDate, endDate, onStartDateChange, onEndDateChang
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       {/* Date inputs row */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: '10px',
+        display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
         background: 'var(--surface)', border: '1.5px solid var(--border)',
         borderRadius: '12px', padding: '10px 16px',
         boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.04)',
-        width: 'fit-content',
+        width: '100%',
+        maxWidth: '100%',
       }}>
         <Calendar size={16} style={{ color: 'var(--primary)', flexShrink: 0 }} />
         <input
