@@ -133,16 +133,16 @@ const GuestRecords = () => {
                   value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
                   style={{ borderRadius: '12px' }} />
               </div>
-              <select className="form-input" value={placeFilter} onChange={e => { setPlaceFilter(e.target.value); setPage(1); }} style={{ width: 'auto', flex: '1 1 150px', borderRadius: '12px', cursor: 'pointer' }}>
+              <select className="form-input no-icon text-center" value={placeFilter} onChange={e => { setPlaceFilter(e.target.value); setPage(1); }} style={{ width: 'auto', flex: '1 1 150px', borderRadius: '12px', cursor: 'pointer' }}>
                 <option value="">All Addresses</option>
                 {places.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
-              <select className="form-input" value={purposeFilter} onChange={e => { setPurposeFilter(e.target.value); setPage(1); }} style={{ width: 'auto', flex: '1 1 150px', borderRadius: '12px', cursor: 'pointer' }}>
+              <select className="form-input no-icon text-center" value={purposeFilter} onChange={e => { setPurposeFilter(e.target.value); setPage(1); }} style={{ width: 'auto', flex: '1 1 150px', borderRadius: '12px', cursor: 'pointer' }}>
                 <option value="">All Purposes</option>
                 {purposes.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
               {profile?.role === 'super_admin' && (
-                <select className="form-input" value={adminFilter} onChange={e => { setAdminFilter(e.target.value); setPage(1); }} style={{ width: 'auto', flex: '1 1 150px', borderRadius: '12px', cursor: 'pointer' }}>
+                <select className="form-input no-icon text-center" value={adminFilter} onChange={e => { setAdminFilter(e.target.value); setPage(1); }} style={{ width: 'auto', flex: '1 1 150px', borderRadius: '12px', cursor: 'pointer' }}>
                   <option value="">All Admins</option>
                   {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                 </select>

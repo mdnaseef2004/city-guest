@@ -358,6 +358,8 @@ h1, h2, h3, h4, h5, h6 {
 .input-wrap:focus-within .input-icon { color: var(--primary); }
 .form-input:disabled { opacity: 0.6; cursor: not-allowed; background: var(--surface-2); }
 textarea.form-input { resize: vertical; min-height: 100px; padding-top: 12px; }
+select.form-input { padding-right: 36px; } /* Space for native dropdown arrow */
+select.form-input.no-icon { padding-left: 16px; } /* Fix left padding if no icon */
 
 /* ─── Buttons ─────────────────────────────────────────────── */
 .btn {
@@ -583,6 +585,7 @@ tbody td strong { font-weight: 600; color: var(--text); }
 .toggle input:checked + .toggle-slider::before { transform: translateX(22px); }
 
 /* ─── Utility ────────────────────────────────────────────── */
+.text-center { text-align: center; text-align-last: center; }
 .text-muted { color: var(--text-muted); }
 .text-primary { color: var(--primary); }
 .text-success { color: var(--success); }
