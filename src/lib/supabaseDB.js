@@ -1,0 +1,368 @@
+// ── Supabase Database Layer ──────────────────────────────────────────────────
+import { supabase } from './supabase';
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
+
+export async function signUp({ name, email, password, role = 'sub_admin' }) {
+  const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
+  const actualRole = count === 0 ? 'super_admin' : role;
+
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  if (error) throw error;
+
+  const { error: profileError } = await supabase.from('profiles').insert({
+    id: data.user.id,
+    name,
+    email: email.toLowerCase(),
+    role: actualRole,
+    is_active: true,
+  });
+  if (profileError) throw profileError;
+
+  return { ...data, role: actualRole };
+}
+
+// ── Users ─────────────────────────────────────────────────────────────────────
+
+export async function getUsers() {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function createUser({ name, email, password, role }) {
+  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+  const SERVICE_KEY = import.meta.env.VITE_SUPABASE_SERVICE_KEY;
+
+  if (!SERVICE_KEY) throw new Error('Service key is missing from .env file');
+
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SERVICE_KEY,
+      'Authorization': `Bearer ${SERVICE_KEY}`,
+    },
+    body: JSON.stringify({
+      email,
+      password,
+      email_confirm: true,
+    }),
+  });
+
+  const created = await res.json();
+  console.log('Supabase Admin API response:', res.status, created);
+
+  if (!res.ok) {
+    const msg = created?.msg || created?.message || created?.error_description || created?.error || JSON.stringify(created);
+    throw new Error(msg);
+  }
+
+  const { error: profileError } = await supabase.from('profiles').insert({
+    id: created.id,
+    name,
+    email: email.toLowerCase(),
+    role: role || 'sub_admin',
+    is_active: true,
+  });
+  if (profileError) throw new Error(`User created in Auth but profile failed: ${profileError.message}`);
+  return created;
+}
+
+export async function updateUser(id, updates) {
+  const { data, error } = await supabase.from('profiles').update(updates).eq('id', id).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteUser(id) {
+  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+  const SERVICE_KEY = import.meta.env.VITE_SUPABASE_SERVICE_KEY;
+
+  // Step 1: Delete from Supabase Auth (blocks login completely)
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${id}`, {
+    method: 'DELETE',
+    headers: {
+      'apikey': SERVICE_KEY,
+      'Authorization': `Bearer ${SERVICE_KEY}`,
+    },
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || 'Failed to delete user from Auth');
+  }
+
+  // Step 2: Delete from profiles
+  // guest_visits.created_by will automatically become NULL (SET NULL constraint)
+  const { error } = await supabase.from('profiles').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function uploadGuestPDF(visitId, pdfBlob) {
+  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+  const SERVICE_KEY = import.meta.env.VITE_SUPABASE_SERVICE_KEY;
+
+  const fileName = `${visitId}-${Date.now()}.pdf`;
+
+  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/pdfs/${fileName}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${SERVICE_KEY}`,
+      'apikey': SERVICE_KEY,
+      'Content-Type': 'application/pdf',
+    },
+    body: pdfBlob
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || 'Failed to upload PDF');
+  }
+
+  const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/pdfs/${fileName}`;
+  
+  const { error } = await supabase.from('guest_visits').update({ pdf_url: publicUrl }).eq('id', visitId);
+  if (error) throw error;
+
+  return publicUrl;
+}
+
+export async function uploadAvatar(userId, file) {
+  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+  const SERVICE_KEY = import.meta.env.VITE_SUPABASE_SERVICE_KEY;
+
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${userId}-${Date.now()}.${fileExt}`;
+
+  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/pdfs/avatars/${fileName}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${SERVICE_KEY}`,
+      'apikey': SERVICE_KEY,
+      'Content-Type': file.type || 'image/jpeg',
+    },
+    body: file
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || 'Failed to upload profile picture');
+  }
+
+  return `${SUPABASE_URL}/storage/v1/object/public/pdfs/avatars/${fileName}`;
+}
+
+// ── Guests ────────────────────────────────────────────────────────────────────
+
+export async function addGuest({ guest_name, phone_number, place, purpose, donation_amount, picked_from, picked_time, guest_returned, return_date, return_time, handled_by, remarks, visits }) {
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  // 1. Insert into guest_visits
+  const { data: visitData, error: visitError } = await supabase.from('guest_visits').insert({
+    guest_name,
+    phone_number,
+    place,
+    purpose,
+    donation_amount: Number(donation_amount) || 0,
+    picked_from: picked_from || '',
+    picked_time: picked_time || null,
+    guest_returned,
+    return_date: return_date || null,
+    return_time: return_time || null,
+    handled_by: handled_by || '',
+    remarks: remarks || '',
+    created_by: user.id,
+  }).select('id').single();
+  
+  if (visitError) throw visitError;
+
+  // 2. Insert into visited_places if any
+  if (visits && visits.length > 0) {
+    const placesToInsert = visits.map(v => ({
+      guest_visit_id: visitData.id,
+      visited_place: v.visited_place,
+      visit_date: v.visit_date || null,
+      time_in: v.time_in,
+      time_out: v.time_out
+    }));
+    
+    const { error: placesError } = await supabase.from('visited_places').insert(placesToInsert);
+    if (placesError) throw placesError;
+  }
+
+  return visitData;
+}
+
+export async function checkDuplicateGuest(guestName) {
+  const { data: { user } } = await supabase.auth.getUser();
+  const today = new Date().toISOString().slice(0, 10);
+  const { data } = await supabase.from('guest_visits')
+    .select('id')
+    .eq('created_by', user.id)
+    .ilike('guest_name', guestName.trim())
+    .gte('created_at', today + 'T00:00:00.000Z')
+    .lte('created_at', today + 'T23:59:59.999Z');
+  return data && data.length > 0;
+}
+
+export async function getGuests({ search, startDate, endDate, place, purpose, createdBy, page = 1, perPage = 20 } = {}) {
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: myProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+
+  let query = supabase
+    .from('guest_visits')
+    .select('*, profiles!created_by(name), visited_places(*)', { count: 'exact' });
+
+  if (myProfile?.role !== 'super_admin') query = query.eq('created_by', user.id);
+  if (search) query = query.ilike('guest_name', `%${search}%`);
+  if (place) query = query.eq('place', place);
+  if (purpose) query = query.eq('purpose', purpose);
+  if (createdBy) query = query.eq('created_by', createdBy);
+  if (startDate) query = query.gte('created_at', startDate);
+  if (endDate) query = query.lte('created_at', endDate);
+
+  query = query
+    .order('created_at', { ascending: false })
+    .range((page - 1) * perPage, page * perPage - 1);
+
+  const { data, count, error } = await query;
+  if (error) throw error;
+  return { data: data || [], total: count || 0 };
+}
+
+export async function updateGuest(id, updates, visitsUpdates) {
+  // Update guest_visits
+  const { data, error } = await supabase
+    .from('guest_visits')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+
+  // Replace visited_places
+  if (visitsUpdates) {
+    // Delete old
+    await supabase.from('visited_places').delete().eq('guest_visit_id', id);
+    // Insert new
+    if (visitsUpdates.length > 0) {
+      const placesToInsert = visitsUpdates.map(v => ({
+        guest_visit_id: id,
+        visited_place: v.visited_place,
+        visit_date: v.visit_date || null,
+        time_in: v.time_in,
+        time_out: v.time_out
+      }));
+      const { error: placesError } = await supabase.from('visited_places').insert(placesToInsert);
+      if (placesError) throw placesError;
+    }
+  }
+
+  return data;
+}
+
+export async function deleteGuest(id) {
+  const { error } = await supabase.from('guest_visits').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function getUniquePlaces() {
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: myProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  let query = supabase.from('guest_visits').select('place');
+  if (myProfile?.role !== 'super_admin') query = query.eq('created_by', user.id);
+  const { data } = await query;
+  return [...new Set((data || []).map(g => g.place).filter(Boolean))].sort();
+}
+
+export async function getUniquePurposes() {
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: myProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  let query = supabase.from('guest_visits').select('purpose');
+  if (myProfile?.role !== 'super_admin') query = query.eq('created_by', user.id);
+  const { data } = await query;
+  return [...new Set((data || []).map(g => g.purpose).filter(Boolean))].sort();
+}
+
+// ── Dashboard Stats ───────────────────────────────────────────────────────────
+
+export async function getDashboardStats() {
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: myProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+
+  let guestsQuery = supabase.from('guest_visits').select('*');
+  if (myProfile?.role !== 'super_admin') guestsQuery = guestsQuery.eq('created_by', user.id);
+
+  const [{ data: guests }, { data: allUsers }] = await Promise.all([
+    guestsQuery,
+    supabase.from('profiles').select('*'),
+  ]);
+
+  const g = guests || [];
+  const u = allUsers || [];
+  const today = new Date().toISOString().slice(0, 10);
+  const month = new Date().toISOString().slice(0, 7);
+
+  const todayGuests = g.filter(x => x.created_at.slice(0, 10) === today);
+  const monthGuests = g.filter(x => x.created_at.slice(0, 7) === month);
+
+  const placeMap = {};
+  g.forEach(x => { placeMap[x.place] = (placeMap[x.place] || 0) + 1; });
+  const guestsByPlace = Object.entries(placeMap)
+    .map(([place, count]) => ({ place, count }))
+    .sort((a, b) => b.count - a.count).slice(0, 10);
+
+  const purposeMap = {};
+  g.forEach(x => { purposeMap[x.purpose] = (purposeMap[x.purpose] || 0) + 1; });
+  const guestsByPurpose = Object.entries(purposeMap)
+    .map(([purpose, count]) => ({ purpose, count }))
+    .sort((a, b) => b.count - a.count);
+
+  const subAdminPerf = u.filter(x => x.role === 'sub_admin').map(x => {
+    const ug = g.filter(r => r.created_by === x.id);
+    const last = [...ug].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+    return {
+      name: x.name,
+      totalEntries: ug.length,
+      totalDonations: ug.reduce((s, r) => s + (r.donation_amount || 0), 0),
+      lastEntry: last?.created_at || null,
+    };
+  }).sort((a, b) => b.totalEntries - a.totalEntries);
+
+  return {
+    totalGuests: g.length,
+    totalDonations: g.reduce((s, x) => s + (x.donation_amount || 0), 0),
+    todayGuests: todayGuests.length,
+    monthlyDonations: monthGuests.reduce((s, x) => s + (x.donation_amount || 0), 0),
+    guestsByPlace,
+    guestsByPurpose,
+    subAdminPerf,
+  };
+}
+
+// ── Reports ───────────────────────────────────────────────────────────────────
+
+export async function getAllGuestsForReports({ startDate, endDate, createdBy, onlyDonations } = {}) {
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: myProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  const { data: allUsers } = await supabase.from('profiles').select('*');
+
+  let query = supabase.from('guest_visits').select('*');
+  if (myProfile?.role !== 'super_admin') query = query.eq('created_by', user.id);
+  if (createdBy) query = query.eq('created_by', createdBy);
+  if (startDate) query = query.gte('created_at', startDate + 'T00:00:00.000Z');
+  if (endDate) query = query.lte('created_at', endDate + 'T23:59:59.999Z');
+  if (onlyDonations) query = query.gt('donation_amount', 0);
+
+  const { data: guests, error } = await query.order('created_at', { ascending: false });
+  if (error) throw error;
+
+  return (guests || []).map(g => ({
+    ...g,
+    profiles: { name: (allUsers || []).find(u => u.id === g.created_by)?.name || 'Unknown' },
+  }));
+}

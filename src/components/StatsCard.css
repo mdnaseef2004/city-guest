@@ -1,0 +1,67 @@
+.stats-card {
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.stats-card:hover {
+  box-shadow: var(--shadow);
+  transform: translateY(-2px);
+}
+.stats-card__icon-wrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.stats-card--primary .stats-card__icon-wrap {
+  background: rgba(99, 102, 241, 0.12);
+  color: #6366f1;
+}
+.stats-card--success .stats-card__icon-wrap {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+}
+.stats-card--info .stats-card__icon-wrap {
+  background: rgba(59, 130, 246, 0.12);
+  color: #3b82f6;
+}
+.stats-card--warning .stats-card__icon-wrap {
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+}
+.stats-card--danger .stats-card__icon-wrap {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+.stats-card__content {
+  flex: 1;
+  min-width: 0;
+}
+.stats-card__title {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+}
+.stats-card__value {
+  margin: 4px 0 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text-h);
+  line-height: 1.2;
+}
+.stats-card__subtitle {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  color: var(--text);
+}
