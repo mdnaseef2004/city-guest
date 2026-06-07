@@ -256,24 +256,24 @@ const GuestRecords = () => {
           
           <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {editForm.visited_places.map((visit, index) => (
-              <div key={index} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', background: 'var(--surface)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                <div style={{ flex: 2 }}>
+              <div key={index} className="visit-row">
+                <div>
                   <label className="form-label" style={{ fontSize: '11px' }}>Place</label>
                   <input type="text" className="form-input no-icon" value={visit.visited_place} onChange={e => handleVisitChange(index, 'visited_place', e.target.value)} />
                 </div>
-                <div style={{ flex: 1 }}>
+                <div>
                   <label className="form-label" style={{ fontSize: '11px' }}>Date</label>
                   <input type="date" className="form-input no-icon" value={visit.visit_date} onChange={e => handleVisitChange(index, 'visit_date', e.target.value)} />
                 </div>
-                <div style={{ flex: 1 }}>
+                <div>
                   <label className="form-label" style={{ fontSize: '11px' }}>Time In</label>
                   <input type="time" className="form-input no-icon" value={visit.time_in} onChange={e => handleVisitChange(index, 'time_in', e.target.value)} />
                 </div>
-                <div style={{ flex: 1 }}>
+                <div>
                   <label className="form-label" style={{ fontSize: '11px' }}>Time Out</label>
                   <input type="time" className="form-input no-icon" value={visit.time_out} onChange={e => handleVisitChange(index, 'time_out', e.target.value)} />
                 </div>
-                <div style={{ paddingTop: '22px' }}>
+                <div className="visit-actions">
                   <button type="button" className="btn btn-ghost btn-icon" onClick={() => removeVisit(index)} style={{ color: 'var(--danger)', padding: '4px' }}>
                     <Trash2 size={14} />
                   </button>
