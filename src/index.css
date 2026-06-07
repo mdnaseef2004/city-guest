@@ -121,6 +121,9 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: var(--shadow-sm);
   transition: all 0.3s ease;
 }
+@media (max-width: 768px) {
+  .topbar { padding: 0 16px; gap: 10px; }
+}
 
 /* ─── Sidebar ────────────────────────────────────────────── */
 .sidebar {
@@ -199,8 +202,14 @@ h1, h2, h3, h4, h5, h6 {
 /* ─── Page ───────────────────────────────────────────────── */
 .page-content { flex: 1; padding: 32px; max-width: 1400px; margin: 0 auto; width: 100%; }
 .page-header { margin-bottom: 32px; display: flex; flex-direction: column; gap: 4px; }
-.page-title { font-size: 28px; font-weight: 800; color: var(--text); }
+.page-title { font-size: 28px; font-weight: 800; color: var(--text); line-height: 1.2; }
 .page-subtitle { color: var(--text-muted); font-size: 14.5px; }
+
+@media (max-width: 768px) {
+  .page-content { padding: 16px; }
+  .page-header { margin-bottom: 24px; }
+  .page-title { font-size: 24px; }
+}
 
 /* ─── Cards ──────────────────────────────────────────────── */
 .card {
@@ -224,10 +233,16 @@ h1, h2, h3, h4, h5, h6 {
 .card-body { padding: 24px; }
 .card-footer { padding: 16px 24px; border-top: 1px solid var(--border); background: var(--surface-2); }
 
+@media (max-width: 768px) {
+  .card-header { padding: 16px; flex-direction: column; align-items: flex-start; gap: 12px; }
+  .card-body { padding: 16px; }
+  .card-footer { padding: 16px; }
+}
+
 /* ─── Stats Cards ────────────────────────────────────────── */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 20px;
   margin-bottom: 32px;
 }
@@ -300,7 +315,7 @@ h1, h2, h3, h4, h5, h6 {
 /* ─── Forms ──────────────────────────────────────────────── */
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
   gap: 20px;
 }
 .form-group { display: flex; flex-direction: column; gap: 8px; }
@@ -527,9 +542,12 @@ tbody td strong { font-weight: 600; color: var(--text); }
 /* ─── Charts Grid ────────────────────────────────────────── */
 .charts-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr));
   gap: 24px;
   margin-bottom: 32px;
+}
+@media (max-width: 768px) {
+  .charts-grid { grid-template-columns: 1fr; gap: 16px; margin-bottom: 24px; }
 }
 
 /* ─── Toggle Switch ──────────────────────────────────────── */
