@@ -369,7 +369,7 @@ export async function getAllGuestsForReports({ startDate, endDate, createdBy, on
 
 // ── Assignments ───────────────────────────────────────────────────────────────
 
-export async function createAssignment({ guest_name, notes, assigned_to, due_date }) {
+export async function createAssignment({ guest_name, notes, assigned_to, due_date, is_urgent }) {
   const { data: { user } } = await supabase.auth.getUser();
   const { data, error } = await supabase
     .from('guest_assignments')
@@ -379,7 +379,8 @@ export async function createAssignment({ guest_name, notes, assigned_to, due_dat
       assigned_to,
       assigned_by: user.id,
       status: 'pending',
-      due_date: due_date || null
+      due_date: due_date || null,
+      is_urgent: is_urgent || false
     })
     .select()
     .single();
@@ -425,18 +426,45 @@ export async function deleteAssignment(id) {
   if (error) throw error;
 }
 
-export function subscribeToAssignments(userId, onNew) {
-  return supabase
-    .channel(`assignments-${userId}`)
-    .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'guest_assignments',
-        filter: `assigned_to=eq.${userId}`,
-      },
-      (payload) => onNew(payload.new)
-    )
+export function subscribeToAssignments(userId, callback) {
+  return supabase.channel('assignments')
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'guest_assignments',
+      filter: `assigned_to=eq.${userId}`
+    }, payload => callback(payload.new))
     .subscribe();
+}
+
+// ── Reminders (Broadcast) ─────────────────────────────────────────────────────
+
+export async function sendUrgentReminder(assigned_to, guest_name) {
+  const channel = supabase.channel('reminders');
+  return new Promise((resolve, reject) => {
+    channel.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await channel.send({
+          type: 'broadcast',
+          event: 'urgent_reminder',
+          payload: { assigned_to, guest_name }
+        });
+        supabase.removeChannel(channel);
+        resolve();
+      }
+      if (status === 'CHANNEL_ERROR') {
+        reject(new Error('Failed to connect to broadcast channel'));
+      }
+    });
+  });
+}
+
+export function subscribeToReminders(userId, callback) {
+  const channel = supabase.channel('reminders_listener');
+  channel.on('broadcast', { event: 'urgent_reminder' }, ({ payload }) => {
+    if (payload.assigned_to === userId) {
+      callback(payload);
+    }
+  }).subscribe();
+  return channel;
 }

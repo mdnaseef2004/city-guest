@@ -1,37 +1,97 @@
-import React, { useState, useEffect, createContext } from 'react';
+import React, { useState, useEffect, createContext, useRef } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import { Moon, Sun, Menu, Camera, Bell } from 'lucide-react';
+import { Moon, Sun, Menu, Camera, Bell, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import Modal from './Modal';
-import { updateUser, uploadAvatar, subscribeToAssignments } from '../lib/supabaseDB';
+import { updateUser, uploadAvatar, subscribeToAssignments, subscribeToReminders } from '../lib/supabaseDB';
 import toast from 'react-hot-toast';
 
 // Context to share pending badge count with Sidebar
 export const AssignmentContext = createContext({ pendingCount: 0 });
 
-// Play alert sound using Web Audio API
-function playAlertSound() {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const playBeep = (freq, start, dur) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.value = freq;
-      osc.type = 'sine';
-      gain.gain.setValueAtTime(0.4, ctx.currentTime + start);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
-      osc.start(ctx.currentTime + start);
-      osc.stop(ctx.currentTime + start + dur + 0.05);
-    };
-    playBeep(880, 0, 0.15);
-    playBeep(1100, 0.18, 0.15);
-    playBeep(880, 0.36, 0.25);
-  } catch (e) {
-    console.warn('Audio not available:', e);
+// Web Audio API logic for sounds
+let audioCtx = null;
+let currentOscillators = [];
+
+function initAudio() {
+  if (!audioCtx) {
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (e) {
+      console.warn('Web Audio not supported');
+    }
   }
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+  return audioCtx;
+}
+
+function stopAlarm() {
+  currentOscillators.forEach(osc => {
+    try { osc.stop(); } catch(e){}
+  });
+  currentOscillators = [];
+}
+
+function playBeep() {
+  const ctx = initAudio();
+  if (!ctx) return;
+  const play = (freq, start, dur) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = freq;
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0.4, ctx.currentTime + start);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
+    osc.start(ctx.currentTime + start);
+    osc.stop(ctx.currentTime + start + dur + 0.05);
+  };
+  play(880, 0, 0.15);
+  play(1100, 0.18, 0.15);
+  play(880, 0.36, 0.25);
+}
+
+function startUrgentSiren() {
+  const ctx = initAudio();
+  if (!ctx) return;
+  stopAlarm();
+
+  // Siren effect: sweeping frequency
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'square';
+  
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  
+  // Set initial volume loud
+  gain.gain.setValueAtTime(0.8, ctx.currentTime);
+  
+  // Modulate frequency to create siren (looping)
+  const duration = 0.8; // cycle duration
+  const now = ctx.currentTime;
+  
+  // We'll queue up several seconds of siren and rely on setInterval to keep it going if needed,
+  // but for simplicity let's just make a repeating LFO using a second oscillator
+  const lfo = ctx.createOscillator();
+  const lfoGain = ctx.createGain();
+  lfo.type = 'triangle';
+  lfo.frequency.value = 2; // 2 sweeps per second
+  lfo.connect(lfoGain);
+  lfoGain.connect(osc.frequency);
+  
+  // Base freq 800, swing by 400 (400 to 1200)
+  osc.frequency.setValueAtTime(800, ctx.currentTime);
+  lfoGain.gain.setValueAtTime(400, ctx.currentTime);
+  
+  osc.start(now);
+  lfo.start(now);
+  
+  currentOscillators.push(osc, lfo);
 }
 
 export default function Layout() {
@@ -45,52 +105,116 @@ export default function Layout() {
   const [profileForm, setProfileForm]     = useState({ name: '', date_of_birth: '', phone_number: '' });
   const [avatarFile, setAvatarFile]       = useState(null);
   const [avatarPreview, setAvatarPreview] = useState('');
+  
   const [pendingCount, setPendingCount]   = useState(0);
   const [notifFlash, setNotifFlash]       = useState(false);
+  
+  // Urgent Alarm State
+  const [urgentAlarmActive, setUrgentAlarmActive] = useState(false);
+  const [urgentGuest, setUrgentGuest] = useState('');
+
+  // Request system notification permission on mount
+  useEffect(() => {
+    if (Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
 
   // Real-time assignment notifications for sub admins
   useEffect(() => {
     if (!profile?.id || profile?.role !== 'sub_admin') return;
 
     const channel = subscribeToAssignments(profile.id, (newAssignment) => {
-      playAlertSound();
-      setNotifFlash(true);
-      setTimeout(() => setNotifFlash(false), 3000);
+      // Must unlock audio context on first interaction, so we do it gently
+      initAudio();
+
       setPendingCount(c => c + 1);
 
-      toast.custom((t) => (
-        <div
-          onClick={() => toast.dismiss(t.id)}
-          style={{
-            display: 'flex', alignItems: 'flex-start', gap: 12,
-            background: 'var(--surface)', border: '2px solid var(--primary)',
-            borderRadius: 14, padding: '14px 18px',
-            boxShadow: '0 8px 30px rgba(5,150,105,0.25)',
-            maxWidth: 340, cursor: 'pointer',
-          }}
-        >
-          <div style={{
-            width: 40, height: 40, borderRadius: 10, flexShrink: 0,
-            background: 'var(--primary-light)', display: 'flex',
-            alignItems: 'center', justifyContent: 'center', color: 'var(--primary)',
-          }}>
-            <Bell size={20} />
-          </div>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', marginBottom: 3 }}>
-              🔔 New Guest Assigned!
+      if (newAssignment.is_urgent) {
+        // Trigger loud continuous alarm
+        startUrgentSiren();
+        setUrgentGuest(newAssignment.guest_name);
+        setUrgentAlarmActive(true);
+
+        // Show System Notification
+        if (Notification.permission === 'granted') {
+          new Notification('🚨 URGENT GUEST ASSIGNMENT', {
+            body: `${newAssignment.guest_name} requires immediate attention!`,
+            requireInteraction: true,
+          });
+        }
+      } else {
+        // Standard beep
+        playBeep();
+        setNotifFlash(true);
+        setTimeout(() => setNotifFlash(false), 3000);
+
+        // Show standard System Notification
+        if (Notification.permission === 'granted') {
+          new Notification('New Guest Assigned', {
+            body: `${newAssignment.guest_name} has been assigned to you.`,
+          });
+        }
+
+        // Show Toast
+        toast.custom((t) => (
+          <div
+            onClick={() => toast.dismiss(t.id)}
+            style={{
+              display: 'flex', alignItems: 'flex-start', gap: 12,
+              background: 'var(--surface)', border: '2px solid var(--primary)',
+              borderRadius: 14, padding: '14px 18px',
+              boxShadow: '0 8px 30px rgba(5,150,105,0.25)',
+              maxWidth: 340, cursor: 'pointer',
+            }}
+          >
+            <div style={{
+              width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+              background: 'var(--primary-light)', display: 'flex',
+              alignItems: 'center', justifyContent: 'center', color: 'var(--primary)',
+            }}>
+              <Bell size={20} />
             </div>
-            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-              <strong style={{ color: 'var(--text)' }}>{newAssignment.guest_name}</strong> has been assigned to you.
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', marginBottom: 3 }}>
+                🔔 New Guest Assigned!
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                <strong style={{ color: 'var(--text)' }}>{newAssignment.guest_name}</strong> has been assigned to you.
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--primary)', marginTop: 4 }}>Tap to dismiss</div>
             </div>
-            <div style={{ fontSize: 11, color: 'var(--primary)', marginTop: 4 }}>Tap to dismiss</div>
           </div>
-        </div>
-      ), { duration: 8000 });
+        ), { duration: 8000 });
+      }
     });
 
-    return () => { channel.unsubscribe(); };
+    const reminderChannel = subscribeToReminders(profile.id, (payload) => {
+      initAudio();
+      startUrgentSiren();
+      setUrgentGuest(payload.guest_name + " (REMINDER)");
+      setUrgentAlarmActive(true);
+
+      if (Notification.permission === 'granted') {
+        new Notification('🚨 URGENT REMINDER', {
+          body: `Super Admin is reminding you about ${payload.guest_name}!`,
+          requireInteraction: true,
+        });
+      }
+    });
+
+    return () => { 
+      channel.unsubscribe(); 
+      reminderChannel.unsubscribe();
+      stopAlarm();
+    };
   }, [profile?.id, profile?.role]);
+
+  const acknowledgeAlarm = () => {
+    stopAlarm();
+    setUrgentAlarmActive(false);
+    window.location.href = '/assignments';
+  };
 
   const toggleDark = () => {
     const next = !dark;
@@ -164,7 +288,6 @@ export default function Layout() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              {/* Bell badge for sub admins */}
               {profile?.role === 'sub_admin' && pendingCount > 0 && (
                 <div style={{ position: 'relative' }}>
                   <button
@@ -262,6 +385,35 @@ export default function Layout() {
           </div>
         </Modal>
 
+        {/* URGENT ALARM OVERLAY */}
+        {urgentAlarmActive && (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(239, 68, 68, 0.95)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            backdropFilter: 'blur(10px)', animation: 'flashBackground 1s infinite alternate'
+          }}>
+            <div style={{
+              background: 'white', padding: 40, borderRadius: 24, textAlign: 'center',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', maxWidth: 400, width: '90%',
+              animation: 'popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
+            }}>
+              <AlertTriangle size={64} color="#ef4444" style={{ margin: '0 auto 16px', animation: 'wobble 1s infinite' }} />
+              <h2 style={{ fontFamily: 'var(--font-heading)', color: '#0f172a', fontSize: 24, fontWeight: 800, marginBottom: 8 }}>URGENT ASSIGNMENT</h2>
+              <p style={{ color: '#64748b', fontSize: 16, marginBottom: 24 }}>
+                <strong>{urgentGuest}</strong> has been assigned to you. This requires your immediate attention!
+              </p>
+              <button 
+                className="btn btn-danger btn-full" 
+                style={{ padding: '16px 24px', fontSize: 18, textTransform: 'uppercase', letterSpacing: 1 }}
+                onClick={acknowledgeAlarm}
+              >
+                Acknowledge & Stop Alarm
+              </button>
+            </div>
+          </div>
+        )}
+
         <style>{`
           @keyframes bellRing {
             0%,100% { transform: rotate(0); }
@@ -269,6 +421,19 @@ export default function Layout() {
             40% { transform: rotate(20deg); }
             60% { transform: rotate(-10deg); }
             80% { transform: rotate(10deg); }
+          }
+          @keyframes flashBackground {
+            from { background: rgba(239, 68, 68, 0.85); }
+            to { background: rgba(185, 28, 28, 0.95); }
+          }
+          @keyframes popIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+          }
+          @keyframes wobble {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-10deg); }
+            75% { transform: rotate(10deg); }
           }
         `}</style>
       </div>

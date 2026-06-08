@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Bell, Plus, CheckCircle, Clock, AlertCircle, Trash2, User, Calendar } from 'lucide-react';
+import { Bell, Plus, CheckCircle, Clock, AlertCircle, Trash2, User, Calendar, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import { useAuth } from '../contexts/AuthContext';
 import {
   createAssignment, getAssignments, updateAssignmentStatus,
-  deleteAssignment, getUsers
+  deleteAssignment, getUsers, sendUrgentReminder
 } from '../lib/supabaseDB';
 
 const STATUS_CONFIG = {
@@ -23,7 +23,7 @@ export default function Assignments() {
   const [loading, setLoading]         = useState(true);
   const [newModal, setNewModal]       = useState(false);
   const [saving, setSaving]           = useState(false);
-  const [form, setForm]               = useState({ guest_name: '', notes: '', assigned_to: '', due_date: '' });
+  const [form, setForm]               = useState({ guest_name: '', notes: '', assigned_to: '', due_date: '', is_urgent: false });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -51,7 +51,7 @@ export default function Assignments() {
       await createAssignment(form);
       toast.success('Assignment created! Sub admin will be notified.');
       setNewModal(false);
-      setForm({ guest_name: '', notes: '', assigned_to: '', due_date: '' });
+      setForm({ guest_name: '', notes: '', assigned_to: '', due_date: '', is_urgent: false });
       load();
     } catch (e) {
       toast.error(e.message);
@@ -159,8 +159,17 @@ export default function Assignments() {
 
                     {/* Info */}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', marginBottom: 2 }}>
+                      <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
                         {a.guest_name}
+                        {a.is_urgent && (
+                          <span style={{
+                            background: 'var(--danger-light)', color: 'var(--danger)',
+                            padding: '2px 8px', borderRadius: 999, fontSize: 11,
+                            display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700
+                          }}>
+                            <AlertTriangle size={12} /> URGENT
+                          </span>
+                        )}
                       </div>
                       {a.notes && (
                         <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>
@@ -202,6 +211,19 @@ export default function Assignments() {
                         <button className="btn btn-primary btn-sm"
                           onClick={() => handleStatus(a.id, 'completed')}>
                           <CheckCircle size={13} /> Complete
+                        </button>
+                      )}
+                      {isSuperAdmin && a.status !== 'completed' && (
+                        <button className="btn btn-secondary btn-sm"
+                          onClick={async () => {
+                            try {
+                              await sendUrgentReminder(a.assigned_to, a.guest_name);
+                              toast.success('Reminder sent to sub admin!');
+                            } catch (e) {
+                              toast.error('Failed to send reminder');
+                            }
+                          }}>
+                          <Bell size={13} /> Remind
                         </button>
                       )}
                       {isSuperAdmin && (
@@ -267,6 +289,18 @@ export default function Assignments() {
                 <option key={u.id} value={u.id}>{u.name}</option>
               ))}
             </select>
+          </div>
+          <div className="form-group" style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4, padding: '12px', background: 'var(--danger-light)', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+            <input
+              type="checkbox"
+              id="urgent"
+              checked={form.is_urgent}
+              onChange={e => setForm(f => ({ ...f, is_urgent: e.target.checked }))}
+              style={{ width: 18, height: 18, cursor: 'pointer', accentColor: 'var(--danger)' }}
+            />
+            <label htmlFor="urgent" style={{ color: 'var(--danger)', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, margin: 0, flex: 1 }}>
+              <AlertTriangle size={16} /> Mark as Urgent (Triggers Loud Alarm for Sub Admin)
+            </label>
           </div>
         </div>
       </Modal>
