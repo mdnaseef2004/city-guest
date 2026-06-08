@@ -10,6 +10,7 @@ import AddGuest from './pages/AddGuest';
 import GuestRecords from './pages/GuestRecords';
 import Reports from './pages/Reports';
 import UserManagement from './pages/UserManagement';
+import Assignments from './pages/Assignments';
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function App() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/add-guest" element={<AddGuest />} />
               <Route path="/guests" element={<GuestRecords />} />
+              <Route path="/assignments" element={<Assignments />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/users" element={<ProtectedRoute requiredRole="super_admin"><UserManagement /></ProtectedRoute>} />
             </Route>

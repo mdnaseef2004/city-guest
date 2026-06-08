@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, UserPlus, ClipboardList, BarChart3,
-  Users, LogOut, X,
+  Users, LogOut, X, Bell
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -11,11 +11,12 @@ const NAV_ITEMS = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard', roles: ['super_admin', 'sub_admin'] },
   { to: '/add-guest', icon: UserPlus, label: 'Add Guest Visit', roles: ['super_admin', 'sub_admin'] },
   { to: '/guests', icon: ClipboardList, label: 'Guest Records', roles: ['super_admin', 'sub_admin'] },
+  { to: '/assignments', icon: Bell, label: 'Assignments', roles: ['super_admin', 'sub_admin'] },
   { to: '/reports', icon: BarChart3, label: 'Reports', roles: ['super_admin'] },
   { to: '/users', icon: Users, label: 'User Management', roles: ['super_admin'] },
 ];
 
-export default function Sidebar({ isOpen, onClose }) {
+export default function Sidebar({ isOpen, onClose, pendingCount = 0 }) {
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -62,7 +63,16 @@ export default function Sidebar({ isOpen, onClose }) {
             onClick={onClose}
           >
             <Icon size={17} />
-            {label}
+            <span style={{ flex: 1 }}>{label}</span>
+            {to === '/assignments' && profile?.role === 'sub_admin' && pendingCount > 0 && (
+              <span style={{
+                background: 'var(--danger)', color: 'white',
+                fontSize: 11, fontWeight: 700, padding: '2px 8px',
+                borderRadius: 999, display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
+              }}>
+                {pendingCount > 9 ? '9+' : pendingCount}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>

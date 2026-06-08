@@ -366,3 +366,77 @@ export async function getAllGuestsForReports({ startDate, endDate, createdBy, on
     profiles: { name: (allUsers || []).find(u => u.id === g.created_by)?.name || 'Unknown' },
   }));
 }
+
+// ── Assignments ───────────────────────────────────────────────────────────────
+
+export async function createAssignment({ guest_name, notes, assigned_to, due_date }) {
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data, error } = await supabase
+    .from('guest_assignments')
+    .insert({
+      guest_name: guest_name.trim(),
+      notes: notes?.trim() || null,
+      assigned_to,
+      assigned_by: user.id,
+      status: 'pending',
+      due_date: due_date || null
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function getAssignments() {
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: myProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+
+  let query = supabase
+    .from('guest_assignments')
+    .select(`
+      *,
+      profiles_assigned_to:assigned_to(name),
+      profiles_assigned_by:assigned_by(name)
+    `)
+    .order('created_at', { ascending: false });
+
+  if (myProfile?.role !== 'super_admin') {
+    query = query.eq('assigned_to', user.id);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
+}
+
+export async function updateAssignmentStatus(id, status) {
+  const { data, error } = await supabase
+    .from('guest_assignments')
+    .update({ status })
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteAssignment(id) {
+  const { error } = await supabase.from('guest_assignments').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export function subscribeToAssignments(userId, onNew) {
+  return supabase
+    .channel(`assignments-${userId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'guest_assignments',
+        filter: `assigned_to=eq.${userId}`,
+      },
+      (payload) => onNew(payload.new)
+    )
+    .subscribe();
+}
