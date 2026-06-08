@@ -115,7 +115,7 @@ export default function Layout() {
 
   // Request system notification permission on mount
   useEffect(() => {
-    if (Notification.permission === 'default') {
+    if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
   }, []);
@@ -137,7 +137,7 @@ export default function Layout() {
         setUrgentAlarmActive(true);
 
         // Show System Notification
-        if (Notification.permission === 'granted') {
+        if ('Notification' in window && Notification.permission === 'granted') {
           new Notification('🚨 URGENT GUEST ASSIGNMENT', {
             body: `${newAssignment.guest_name} requires immediate attention!`,
             requireInteraction: true,
@@ -150,7 +150,7 @@ export default function Layout() {
         setTimeout(() => setNotifFlash(false), 3000);
 
         // Show standard System Notification
-        if (Notification.permission === 'granted') {
+        if ('Notification' in window && Notification.permission === 'granted') {
           new Notification('New Guest Assigned', {
             body: `${newAssignment.guest_name} has been assigned to you.`,
           });
@@ -195,7 +195,7 @@ export default function Layout() {
       setUrgentGuest(payload.guest_name + " (REMINDER)");
       setUrgentAlarmActive(true);
 
-      if (Notification.permission === 'granted') {
+      if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('🚨 URGENT REMINDER', {
           body: `Super Admin is reminding you about ${payload.guest_name}!`,
           requireInteraction: true,
