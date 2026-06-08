@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, X, Pencil, Trash2, ChevronLeft, ChevronRight, Plus, Map, Download } from 'lucide-react';
+import { Search, X, Pencil, Trash2, ChevronLeft, ChevronRight, Plus, Map, Download, MessageSquare } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import DateRangePicker from '../components/DateRangePicker';
@@ -111,6 +111,16 @@ const GuestRecords = () => {
     } catch (e) { toast.error(e.message); }
   };
 
+  const handleThankYou = (guest) => {
+    if (!guest.phone_number) {
+      toast.error('No phone number available for this guest.');
+      return;
+    }
+    const message = `Hi ${guest.guest_name}, thank you so much for visiting us today! We appreciate your presence.`;
+    const phone = guest.phone_number.replace(/\D/g, '');
+    window.open(`sms:${phone}?body=${encodeURIComponent(message)}`, '_self');
+  };
+
   const canEdit = (r) => profile?.role === 'super_admin' || r.created_by === profile?.id;
   const canDelete = () => profile?.role === 'super_admin';
   const totalPages = Math.ceil(total / PER_PAGE);
@@ -197,6 +207,11 @@ const GuestRecords = () => {
                           <a href={r.pdf_url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-icon" title="Download PDF">
                             <Download size={14} />
                           </a>
+                        )}
+                        {profile?.role === 'super_admin' && (
+                          <button className="btn btn-primary btn-sm" title="Send Thank You SMS" onClick={() => handleThankYou(r)} style={{ padding: '4px 8px', fontSize: 12 }}>
+                            <MessageSquare size={12} /> Thank You
+                          </button>
                         )}
                         {canEdit(r) && (
                           <button className="btn btn-ghost btn-icon" title="Edit" onClick={() => openEdit(r)}>
