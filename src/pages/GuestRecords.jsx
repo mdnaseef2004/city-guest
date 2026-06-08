@@ -116,7 +116,20 @@ const GuestRecords = () => {
       toast.error('No phone number available for this guest.');
       return;
     }
-    const message = `Hi ${guest.guest_name}, thank you so much for visiting us today! We appreciate your presence.`;
+    const message = `Hi ${guest.guest_name},
+
+Thank you for visiting Markaz Knowledge City.
+
+We truly appreciate your time and interest in our vision and initiatives. It was a pleasure hosting you and we look forward to your continued support and cooperation.
+
+If there were any shortcomings or inconveniences during your visit, we kindly seek your understanding and forgiveness.
+
+For any future communication or assistance, please feel free to contact us at +91 62359 98805.
+
+Warm regards,
+
+Guest Relations/ Outreach Department
+Markaz Knowledge City`;
     const phone = guest.phone_number.replace(/\D/g, '');
     window.open(`sms:${phone}?body=${encodeURIComponent(message)}`, '_self');
   };
