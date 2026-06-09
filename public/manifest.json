@@ -1,12 +1,12 @@
 {
-  "name": "City Guest — Markaz Knowledge City",
+  "name": "City Guest",
   "short_name": "City Guest",
   "description": "Guest Relations Management for Markaz Knowledge City",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#f2fbf5",
+  "background_color": "#ffffff",
   "theme_color": "#059669",
   "categories": ["business", "productivity"],
   "icons": [
@@ -23,7 +23,6 @@
       "purpose": "any maskable"
     }
   ],
-  "screenshots": [],
   "shortcuts": [
     {
       "name": "Add Guest",
