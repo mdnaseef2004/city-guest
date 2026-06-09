@@ -221,11 +221,9 @@ Markaz Knowledge City`;
                             <Download size={14} />
                           </a>
                         )}
-                        {profile?.role === 'super_admin' && (
-                          <button className="btn btn-primary btn-sm" title="Send Thank You SMS" onClick={() => handleThankYou(r)} style={{ padding: '4px 8px', fontSize: 12 }}>
-                            <MessageSquare size={12} /> Thank You
-                          </button>
-                        )}
+                        <button className="btn btn-primary btn-sm" title="Send Thank You SMS" onClick={() => handleThankYou(r)} style={{ padding: '4px 8px', fontSize: 12 }}>
+                          <MessageSquare size={12} /> Thank You
+                        </button>
                         {canEdit(r) && (
                           <button className="btn btn-ghost btn-icon" title="Edit" onClick={() => openEdit(r)}>
                             <Pencil size={14} />
