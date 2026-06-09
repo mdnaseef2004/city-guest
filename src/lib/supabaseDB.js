@@ -385,6 +385,16 @@ export async function createAssignment({ guest_name, notes, assigned_to, due_dat
     .select()
     .single();
   if (error) throw error;
+
+  // Fire background push so the sub-admin is notified even when tab is closed
+  const title = is_urgent
+    ? '🚨 URGENT GUEST ASSIGNMENT'
+    : '🔔 New Guest Assigned';
+  const body = is_urgent
+    ? `${guest_name.trim()} requires your IMMEDIATE attention!`
+    : `${guest_name.trim()} has been assigned to you.`;
+  await triggerBackgroundPush({ userId: assigned_to, title, body, isUrgent: is_urgent || false, url: '/assignments' });
+
   return data;
 }
 
@@ -440,8 +450,9 @@ export function subscribeToAssignments(userId, callback) {
 // ── Reminders (Broadcast) ─────────────────────────────────────────────────────
 
 export async function sendUrgentReminder(assigned_to, guest_name) {
+  // Send realtime broadcast (works when app is open)
   const channel = supabase.channel('reminders');
-  return new Promise((resolve, reject) => {
+  await new Promise((resolve, reject) => {
     channel.subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
         await channel.send({
@@ -457,6 +468,15 @@ export async function sendUrgentReminder(assigned_to, guest_name) {
       }
     });
   });
+
+  // Also send background push so device wakes up even if app is closed
+  await triggerBackgroundPush({
+    userId: assigned_to,
+    title: '🚨 URGENT REMINDER',
+    body: `Super Admin is reminding you about ${guest_name}! Open the app immediately.`,
+    isUrgent: true,
+    url: '/assignments',
+  });
 }
 
 export function subscribeToReminders(userId, callback) {
@@ -467,4 +487,52 @@ export function subscribeToReminders(userId, callback) {
     }
   }).subscribe();
   return channel;
+}
+
+// ── Push Subscription (Background Notifications) ──────────────────────────────
+
+/**
+ * Save a browser PushSubscription object for the current user.
+ * Called after the user grants notification permission.
+ */
+export async function savePushSubscription(subscription) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const sub = subscription.toJSON();
+  const { error } = await supabase.from('push_subscriptions').upsert({
+    user_id: user.id,
+    endpoint: sub.endpoint,
+    p256dh: sub.keys.p256dh,
+    auth: sub.keys.auth,
+  }, { onConflict: 'user_id,endpoint' });
+
+  if (error) console.warn('Failed to save push subscription:', error.message);
+}
+
+/**
+ * Remove the push subscription for the current user (e.g. on logout).
+ */
+export async function deletePushSubscription(endpoint) {
+  const { error } = await supabase
+    .from('push_subscriptions')
+    .delete()
+    .eq('endpoint', endpoint);
+  if (error) console.warn('Failed to delete push subscription:', error.message);
+}
+
+/**
+ * Call the Vercel serverless function to send a background push notification
+ * to a specific user even when their tab is closed.
+ */
+export async function triggerBackgroundPush({ userId, title, body, isUrgent = false, url = '/assignments' }) {
+  try {
+    await fetch('/api/send-push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, title, body, isUrgent, url }),
+    });
+  } catch (err) {
+    console.warn('Background push failed:', err.message);
+  }
 }

@@ -4,7 +4,7 @@ import Sidebar from './Sidebar';
 import { Moon, Sun, Menu, Camera, Bell, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import Modal from './Modal';
-import { updateUser, uploadAvatar, subscribeToAssignments, subscribeToReminders } from '../lib/supabaseDB';
+import { updateUser, uploadAvatar, subscribeToAssignments, subscribeToReminders, savePushSubscription } from '../lib/supabaseDB';
 import toast from 'react-hot-toast';
 
 // Context to share pending badge count with Sidebar
@@ -113,12 +113,75 @@ export default function Layout() {
   const [urgentAlarmActive, setUrgentAlarmActive] = useState(false);
   const [urgentGuest, setUrgentGuest] = useState('');
 
-  // Request system notification permission on mount
+  // Request notification permission AND set up Web Push subscription for background alerts
   useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
+    if (!profile?.id) return;
+
+    async function setupPush() {
+      // Step 1: ask for permission
+      if (!('Notification' in window)) return;
+      let permission = Notification.permission;
+      if (permission === 'default') {
+        permission = await Notification.requestPermission();
+      }
+      if (permission !== 'granted') return;
+
+      // Step 2: register push subscription (works in background)
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+      try {
+        const registration = window.__swRegistration ||
+          await navigator.serviceWorker.ready;
+
+        const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+        if (!vapidKey) return;
+
+        // Convert base64url VAPID key to Uint8Array
+        const urlB64 = vapidKey.replace(/-/g, '+').replace(/_/g, '/');
+        const padding = '='.repeat((4 - urlB64.length % 4) % 4);
+        const base64 = (urlB64 + padding);
+        const raw = window.atob(base64);
+        const outputArray = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; ++i) outputArray[i] = raw.charCodeAt(i);
+
+        // Subscribe or retrieve existing subscription
+        let subscription = await registration.pushManager.getSubscription();
+        if (!subscription) {
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: outputArray,
+          });
+        }
+
+        // Save to Supabase so the server can send pushes to this device
+        await savePushSubscription(subscription);
+      } catch (err) {
+        console.warn('Push subscription setup failed:', err.message);
+      }
     }
-  }, []);
+
+    setupPush();
+
+    // Step 3: listen for Service Worker messages (urgent siren on notification tap)
+    const onSwSiren = () => {
+      initAudio();
+      startUrgentSiren();
+      setUrgentAlarmActive(true);
+    };
+    window.addEventListener('sw-urgent-siren', onSwSiren);
+
+    // Step 4: if app was opened via an urgent notification tap, auto-start siren
+    if (window.location.search.includes('urgent=1')) {
+      initAudio();
+      startUrgentSiren();
+      setUrgentAlarmActive(true);
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+
+    return () => {
+      window.removeEventListener('sw-urgent-siren', onSwSiren);
+    };
+  }, [profile?.id]);
 
   // Real-time assignment notifications for sub admins
   useEffect(() => {
