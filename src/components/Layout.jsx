@@ -81,10 +81,10 @@ function playBeep() {
   play(1318, 0.20, 0.25); // E6
 }
 
-function startUrgentSiren() {
+function startUrgentSiren(customMessage) {
   stopAlarm();
 
-  const message = 'Attention! You have a new guest requiring immediate attention. Please respond now.';
+  const message = customMessage || 'Attention! You have a new guest requiring immediate attention. Please respond now.';
 
   // Speak immediately
   const speechSupported = speakAnnouncement(message);
@@ -280,7 +280,7 @@ export default function Layout() {
 
     const reminderChannel = subscribeToReminders(profile.id, (payload) => {
       initAudio();
-      startUrgentSiren();
+      startUrgentSiren(`Please check the details. Super Admin is reminding you about guest ${payload.guest_name}.`);
       setUrgentGuest(payload.guest_name + " (REMINDER)");
       setUrgentAlarmActive(true);
 
