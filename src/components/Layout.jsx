@@ -28,24 +28,48 @@ function initAudio() {
   return audioCtx;
 }
 
-// Interval handle for repeating voice announcement
-let sirenInterval = null;
+// Flag for repeating alarms
+let isAlarmActive = false;
 
 function speakAnnouncement(message) {
   if (!('speechSynthesis' in window)) return false;
-  // Cancel any ongoing speech first
+  
+  // Cancel any stuck speech
   window.speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(message);
-  utter.lang = 'en-IN';      // Indian English accent
-  utter.rate = 0.9;          // Slightly slower for clarity
-  utter.pitch = 1.1;         // Slightly higher pitch
-  utter.volume = 1.0;        // Full volume
-  window.speechSynthesis.speak(utter);
+  
+  const speak = () => {
+    if (!isAlarmActive) return;
+    
+    const utter = new SpeechSynthesisUtterance(message);
+    utter.lang = 'en-IN';      // Indian English accent
+    utter.rate = 0.9;
+    utter.pitch = 1.1;
+    utter.volume = 1.0;
+    
+    // Loop speech every 3 seconds if alarm is still active
+    utter.onend = () => {
+      if (isAlarmActive) {
+        setTimeout(speak, 3000);
+      }
+    };
+    
+    utter.onerror = (e) => {
+      console.warn('Speech synthesis error:', e);
+      if (isAlarmActive) {
+        setTimeout(speak, 4000);
+      }
+    };
+
+    window.speechSynthesis.speak(utter);
+  };
+  
+  speak();
   return true;
 }
 
 function stopAlarm() {
-  // Stop oscillators
+  isAlarmActive = false;
+  // Stop any playing oscillators
   currentOscillators.forEach(osc => {
     try { osc.stop(); } catch(e){}
   });
@@ -53,11 +77,6 @@ function stopAlarm() {
   // Stop speech
   if ('speechSynthesis' in window) {
     window.speechSynthesis.cancel();
-  }
-  // Stop repeat interval
-  if (sirenInterval) {
-    clearInterval(sirenInterval);
-    sirenInterval = null;
   }
 }
 
@@ -83,40 +102,13 @@ function playBeep() {
 
 function startUrgentSiren(customMessage) {
   stopAlarm();
+  isAlarmActive = true;
+
+  // Always play the chime so there is guaranteed sound even if speech is blocked
+  playBeep();
 
   const message = customMessage || 'Attention! You have a new guest requiring immediate attention. Please respond now.';
-
-  // Speak immediately
-  const speechSupported = speakAnnouncement(message);
-
-  if (!speechSupported) {
-    // Fallback: oscillator alarm if speech not supported
-    const ctx = initAudio();
-    if (!ctx) return;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    const lfo = ctx.createOscillator();
-    const lfoGain = ctx.createGain();
-    osc.type = 'square';
-    lfo.type = 'triangle';
-    lfo.frequency.value = 2;
-    osc.frequency.setValueAtTime(800, ctx.currentTime);
-    lfoGain.gain.setValueAtTime(400, ctx.currentTime);
-    gain.gain.setValueAtTime(0.8, ctx.currentTime);
-    lfo.connect(lfoGain);
-    lfoGain.connect(osc.frequency);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    lfo.start();
-    currentOscillators.push(osc, lfo);
-    return;
-  }
-
-  // Repeat the announcement every 5 seconds until acknowledged
-  sirenInterval = setInterval(() => {
-    speakAnnouncement(message);
-  }, 5000);
+  speakAnnouncement(message);
 }
 
 
