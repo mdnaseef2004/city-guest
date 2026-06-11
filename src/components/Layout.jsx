@@ -366,15 +366,16 @@ export default function Layout() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              {profile?.role === 'sub_admin' && pendingCount > 0 && (
-                <div style={{ position: 'relative' }}>
-                  <button
-                    className="btn btn-ghost btn-icon"
-                    style={{ color: notifFlash ? 'var(--primary)' : 'var(--text-muted)' }}
-                    title="Pending assignments"
-                    onClick={() => { window.location.href = '/assignments'; }}
-                  >
-                    <Bell size={20} style={{ animation: notifFlash ? 'bellRing 0.5s ease 3' : 'none' }} />
+              {/* Notification Bell (Always visible) */}
+              <div style={{ position: 'relative' }}>
+                <button
+                  className="btn btn-ghost btn-icon"
+                  style={{ color: notifFlash ? 'var(--primary)' : 'var(--text-muted)' }}
+                  title="Notifications"
+                  onClick={() => { window.location.href = profile?.role === 'sub_admin' ? '/assignments' : '/guests'; }}
+                >
+                  <Bell size={18} style={{ animation: notifFlash ? 'bellRing 0.5s ease 3' : 'none' }} />
+                  {profile?.role === 'sub_admin' && pendingCount > 0 && (
                     <span style={{
                       position: 'absolute', top: 2, right: 2,
                       width: 16, height: 16, borderRadius: '50%',
@@ -384,9 +385,9 @@ export default function Layout() {
                     }}>
                       {pendingCount > 9 ? '9+' : pendingCount}
                     </span>
-                  </button>
-                </div>
-              )}
+                  )}
+                </button>
+              </div>
 
               <button className="btn btn-ghost btn-icon" onClick={toggleDark} title="Toggle dark mode">
                 {dark ? <Sun size={18} /> : <Moon size={18} />}
