@@ -395,6 +395,14 @@ export async function createAssignment({ guest_name, notes, assigned_to, due_dat
     : `${guest_name.trim()} has been assigned to you.`;
   await triggerBackgroundPush({ userId: assigned_to, title, body, isUrgent: is_urgent || false, url: '/assignments' });
 
+  // Create persistent notification for Sub Admin
+  await createNotification({
+    userId: assigned_to,
+    title,
+    message: body,
+    type: is_urgent ? 'urgent' : 'info'
+  });
+
   return data;
 }
 
@@ -477,6 +485,25 @@ export async function sendUrgentReminder(assigned_to, guest_name) {
     isUrgent: true,
     url: '/assignments',
   });
+
+  // Create persistent notification for Sub Admin
+  await createNotification({
+    userId: assigned_to,
+    title: '🚨 Urgent Reminder',
+    message: `Super Admin is reminding you about ${guest_name}!`,
+    type: 'reminder'
+  });
+
+  // Create persistent notification for Super Admin (the one who sent it)
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    await createNotification({
+      userId: user.id,
+      title: 'Reminder Sent',
+      message: `You sent an urgent reminder to the Sub Admin regarding ${guest_name}.`,
+      type: 'info'
+    });
+  }
 }
 
 export function subscribeToReminders(userId, callback) {
@@ -535,4 +562,57 @@ export async function triggerBackgroundPush({ userId, title, body, isUrgent = fa
   } catch (err) {
     console.warn('Background push failed:', err.message);
   }
+}
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+
+export async function createNotification({ userId, title, message, type = 'info' }) {
+  const { data, error } = await supabase.from('app_notifications').insert({
+    user_id: userId,
+    title,
+    message,
+    type,
+    is_read: false
+  }).select().single();
+  if (error) console.warn('Failed to create notification:', error.message);
+  return data;
+}
+
+export async function getNotifications() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data, error } = await supabase
+    .from('app_notifications')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function markNotificationsRead() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  const { error } = await supabase
+    .from('app_notifications')
+    .update({ is_read: true })
+    .eq('user_id', user.id)
+    .eq('is_read', false);
+  if (error) console.warn('Failed to mark notifications read:', error.message);
+}
+
+export async function deleteNotification(id) {
+  const { error } = await supabase.from('app_notifications').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export function subscribeToNotifications(userId, callback) {
+  return supabase.channel('app_notifications_channel')
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'app_notifications',
+      filter: `user_id=eq.${userId}`
+    }, payload => callback(payload.new || payload.old))
+    .subscribe();
 }

@@ -4,7 +4,7 @@ import Sidebar from './Sidebar';
 import { Moon, Sun, Menu, Camera, Bell, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import Modal from './Modal';
-import { updateUser, uploadAvatar, subscribeToAssignments, subscribeToReminders, savePushSubscription } from '../lib/supabaseDB';
+import { updateUser, uploadAvatar, subscribeToAssignments, subscribeToReminders, savePushSubscription, getNotifications, subscribeToNotifications } from '../lib/supabaseDB';
 import toast from 'react-hot-toast';
 
 // Context to share pending badge count with Sidebar
@@ -122,6 +122,7 @@ export default function Layout() {
   const [avatarPreview, setAvatarPreview] = useState('');
   
   const [pendingCount, setPendingCount]   = useState(0);
+  const [unreadCount, setUnreadCount]     = useState(0);
   const [notifFlash, setNotifFlash]       = useState(false);
   
   // Urgent Alarm State
@@ -288,6 +289,26 @@ export default function Layout() {
     };
   }, [profile?.id, profile?.role]);
 
+  // Notifications fetching
+  useEffect(() => {
+    if (!profile?.id) return;
+    
+    const fetchUnread = () => {
+      getNotifications().then(data => {
+        setUnreadCount(data.filter(n => !n.is_read).length);
+      }).catch(console.warn);
+    };
+
+    fetchUnread();
+    const notifSub = subscribeToNotifications(profile.id, () => {
+      fetchUnread();
+    });
+
+    return () => {
+      if (notifSub) notifSub.unsubscribe();
+    };
+  }, [profile?.id]);
+
   const acknowledgeAlarm = () => {
     stopAlarm();
     setUrgentAlarmActive(false);
@@ -372,10 +393,10 @@ export default function Layout() {
                   className="btn btn-ghost btn-icon"
                   style={{ color: notifFlash ? 'var(--primary)' : 'var(--text-muted)' }}
                   title="Notifications"
-                  onClick={() => { window.location.href = profile?.role === 'sub_admin' ? '/assignments' : '/guests'; }}
+                  onClick={() => { window.location.href = '/notifications'; }}
                 >
                   <Bell size={18} style={{ animation: notifFlash ? 'bellRing 0.5s ease 3' : 'none' }} />
-                  {profile?.role === 'sub_admin' && pendingCount > 0 && (
+                  {unreadCount > 0 && (
                     <span style={{
                       position: 'absolute', top: 2, right: 2,
                       width: 16, height: 16, borderRadius: '50%',
@@ -383,7 +404,7 @@ export default function Layout() {
                       fontSize: 10, fontWeight: 700,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
-                      {pendingCount > 9 ? '9+' : pendingCount}
+                      {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}
                 </button>

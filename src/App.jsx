@@ -11,6 +11,7 @@ import GuestRecords from './pages/GuestRecords';
 import Reports from './pages/Reports';
 import UserManagement from './pages/UserManagement';
 import Assignments from './pages/Assignments';
+import Notifications from './pages/Notifications';
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
               <Route path="/add-guest" element={<AddGuest />} />
               <Route path="/guests" element={<GuestRecords />} />
               <Route path="/assignments" element={<Assignments />} />
+              <Route path="/notifications" element={<Notifications />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/users" element={<ProtectedRoute requiredRole="super_admin"><UserManagement /></ProtectedRoute>} />
             </Route>
