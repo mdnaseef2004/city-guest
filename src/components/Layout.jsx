@@ -28,11 +28,37 @@ function initAudio() {
   return audioCtx;
 }
 
+// Interval handle for repeating voice announcement
+let sirenInterval = null;
+
+function speakAnnouncement(message) {
+  if (!('speechSynthesis' in window)) return false;
+  // Cancel any ongoing speech first
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(message);
+  utter.lang = 'en-IN';      // Indian English accent
+  utter.rate = 0.9;          // Slightly slower for clarity
+  utter.pitch = 1.1;         // Slightly higher pitch
+  utter.volume = 1.0;        // Full volume
+  window.speechSynthesis.speak(utter);
+  return true;
+}
+
 function stopAlarm() {
+  // Stop oscillators
   currentOscillators.forEach(osc => {
     try { osc.stop(); } catch(e){}
   });
   currentOscillators = [];
+  // Stop speech
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+  }
+  // Stop repeat interval
+  if (sirenInterval) {
+    clearInterval(sirenInterval);
+    sirenInterval = null;
+  }
 }
 
 function playBeep() {
@@ -45,54 +71,54 @@ function playBeep() {
     gain.connect(ctx.destination);
     osc.frequency.value = freq;
     osc.type = 'sine';
-    gain.gain.setValueAtTime(0.4, ctx.currentTime + start);
+    gain.gain.setValueAtTime(0.5, ctx.currentTime + start);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
     osc.start(ctx.currentTime + start);
     osc.stop(ctx.currentTime + start + dur + 0.05);
   };
-  play(880, 0, 0.15);
-  play(1100, 0.18, 0.15);
-  play(880, 0.36, 0.25);
+  // Two-tone notification chime
+  play(1046, 0, 0.18);    // C6
+  play(1318, 0.20, 0.25); // E6
 }
 
 function startUrgentSiren() {
-  const ctx = initAudio();
-  if (!ctx) return;
   stopAlarm();
 
-  // Siren effect: sweeping frequency
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = 'square';
-  
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  
-  // Set initial volume loud
-  gain.gain.setValueAtTime(0.8, ctx.currentTime);
-  
-  // Modulate frequency to create siren (looping)
-  const duration = 0.8; // cycle duration
-  const now = ctx.currentTime;
-  
-  // We'll queue up several seconds of siren and rely on setInterval to keep it going if needed,
-  // but for simplicity let's just make a repeating LFO using a second oscillator
-  const lfo = ctx.createOscillator();
-  const lfoGain = ctx.createGain();
-  lfo.type = 'triangle';
-  lfo.frequency.value = 2; // 2 sweeps per second
-  lfo.connect(lfoGain);
-  lfoGain.connect(osc.frequency);
-  
-  // Base freq 800, swing by 400 (400 to 1200)
-  osc.frequency.setValueAtTime(800, ctx.currentTime);
-  lfoGain.gain.setValueAtTime(400, ctx.currentTime);
-  
-  osc.start(now);
-  lfo.start(now);
-  
-  currentOscillators.push(osc, lfo);
+  const message = 'Attention! You have a new guest requiring immediate attention. Please respond now.';
+
+  // Speak immediately
+  const speechSupported = speakAnnouncement(message);
+
+  if (!speechSupported) {
+    // Fallback: oscillator alarm if speech not supported
+    const ctx = initAudio();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const lfo = ctx.createOscillator();
+    const lfoGain = ctx.createGain();
+    osc.type = 'square';
+    lfo.type = 'triangle';
+    lfo.frequency.value = 2;
+    osc.frequency.setValueAtTime(800, ctx.currentTime);
+    lfoGain.gain.setValueAtTime(400, ctx.currentTime);
+    gain.gain.setValueAtTime(0.8, ctx.currentTime);
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc.frequency);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    lfo.start();
+    currentOscillators.push(osc, lfo);
+    return;
+  }
+
+  // Repeat the announcement every 5 seconds until acknowledged
+  sirenInterval = setInterval(() => {
+    speakAnnouncement(message);
+  }, 5000);
 }
+
 
 export default function Layout() {
   const { profile, refreshProfile } = useAuth();
