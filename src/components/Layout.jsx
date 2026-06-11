@@ -104,9 +104,6 @@ function startUrgentSiren(customMessage) {
   stopAlarm();
   isAlarmActive = true;
 
-  // Always play the chime so there is guaranteed sound even if speech is blocked
-  playBeep();
-
   const message = customMessage || 'Attention! You have a new guest requiring immediate attention. Please respond now.';
   speakAnnouncement(message);
 }
