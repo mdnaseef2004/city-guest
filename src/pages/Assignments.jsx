@@ -3,6 +3,7 @@ import { Bell, Plus, CheckCircle, Clock, AlertCircle, Trash2, User, Calendar, Al
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 import {
   createAssignment, getAssignments, updateAssignmentStatus,
   deleteAssignment, getUsers, sendUrgentReminder
@@ -37,7 +38,18 @@ export default function Assignments() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { 
+    load(); 
+    
+    // Real-time sync for Assignments page
+    const channel = supabase.channel('assignments_page_sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'guest_assignments' }, () => {
+        load();
+      })
+      .subscribe();
+
+    return () => { channel.unsubscribe(); };
+  }, [load]);
 
   useEffect(() => {
     if (isSuperAdmin) getUsers().then(u => setUsers(u.filter(x => x.role === 'sub_admin')));

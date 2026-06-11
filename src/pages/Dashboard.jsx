@@ -4,6 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import * as XLSX from 'xlsx';
 import StatsCard from '../components/StatsCard';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 import { getDashboardStats } from '../lib/supabaseDB';
 
 const COLORS = ['#059669', '#10b981', '#34d399', '#0d9488', '#6ee7b7', '#047857'];
@@ -42,10 +43,23 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getDashboardStats()
-      .then(setStats)
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    const fetchStats = () => {
+      getDashboardStats()
+        .then(setStats)
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    };
+
+    fetchStats();
+
+    // Real-time sync for Dashboard stats
+    const channel = supabase.channel('dashboard_stats_sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'guest_visits' }, () => {
+        fetchStats();
+      })
+      .subscribe();
+
+    return () => { channel.unsubscribe(); };
   }, []);
 
   const fmt = (n) => Number(n || 0).toLocaleString('en-IN');

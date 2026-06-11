@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import DateRangePicker from '../components/DateRangePicker';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 import { getGuests, getUsers, getUniquePlaces, getUniquePurposes, updateGuest, deleteGuest } from '../lib/supabaseDB';
 
 const PER_PAGE = 20;
@@ -55,7 +56,18 @@ const GuestRecords = () => {
     }
   }, [search, startDate, endDate, placeFilter, purposeFilter, adminFilter, page]);
 
-  useEffect(() => { fetchRecords(); }, [fetchRecords]);
+  useEffect(() => { 
+    fetchRecords(); 
+    
+    // Real-time sync for Guest Records page
+    const channel = supabase.channel('guest_records_sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'guest_visits' }, () => {
+        fetchRecords();
+      })
+      .subscribe();
+
+    return () => { channel.unsubscribe(); };
+  }, [fetchRecords]);
 
   useEffect(() => {
     getUniquePlaces().then(setPlaces);
