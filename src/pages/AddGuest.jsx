@@ -15,9 +15,36 @@ const INDIAN_STATES = [
   "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
 ];
 
+const COUNTRIES = [
+  "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia",
+  "Australia", "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus",
+  "Belgium", "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil",
+  "Brunei", "Bulgaria", "Burkina Faso", "Burundi", "Cabo Verde", "Cambodia", "Cameroon", "Canada",
+  "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo", "Costa Rica",
+  "Croatia", "Cuba", "Cyprus", "Czech Republic", "Denmark", "Djibouti", "Dominica", "Dominican Republic",
+  "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini", "Ethiopia",
+  "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada",
+  "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", "Honduras", "Hungary", "Iceland", "Indonesia",
+  "Iran", "Iraq", "Ireland", "Israel", "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya",
+  "Kiribati", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya",
+  "Liechtenstein", "Lithuania", "Luxembourg", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali",
+  "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco",
+  "Mongolia", "Montenegro", "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal",
+  "Netherlands", "New Zealand", "Nicaragua", "Niger", "Nigeria", "North Korea", "North Macedonia",
+  "Norway", "Oman", "Pakistan", "Palau", "Palestine", "Panama", "Papua New Guinea", "Paraguay", "Peru",
+  "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis",
+  "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Sao Tome and Principe",
+  "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia",
+  "Solomon Islands", "Somalia", "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka",
+  "Sudan", "Suriname", "Sweden", "Switzerland", "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand",
+  "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu",
+  "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan",
+  "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
+];
+
 const EMPTY_VISIT = { visited_place: '', visit_date: '', time_in: '', time_out: '' };
 const EMPTY = { 
-  guest_name: '', mobile_number: '', place: '', state: '', purpose: '', donation_amount: '', 
+  guest_name: '', mobile_number: '', place: '', state: '', country: '', is_international: false, purpose: '', donation_amount: '', 
   picked_from: '', picked_time: '', handled_by: '', visits: [], guest_returned: '', return_date: '', return_time: '', remarks: '' 
 };
 
@@ -55,7 +82,9 @@ const AddGuest = () => {
         guest_name: form.guest_name.trim(),
         phone_number: form.mobile_number.trim(), // API expects phone_number now
         place: form.place.trim(),
-        state: form.state,
+        state: form.is_international ? null : form.state,
+        country: form.is_international ? form.country : null,
+        is_international: form.is_international,
         purpose: form.purpose.trim(),
         donation_amount: form.donation_amount,
         picked_from: form.picked_from.trim(),
@@ -89,7 +118,8 @@ const AddGuest = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.guest_name.trim() || !form.mobile_number.trim() || !form.place.trim() || !form.state || !form.purpose.trim() || !form.guest_returned) {
+    const locationValid = form.is_international ? !!form.country : !!form.state;
+    if (!form.guest_name.trim() || !form.mobile_number.trim() || !form.place.trim() || !locationValid || !form.purpose.trim() || !form.guest_returned) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -153,18 +183,57 @@ const AddGuest = () => {
                 </div>
               </div>
 
-              <div className="form-group">
-                <label className="form-label" htmlFor="state">State <span className="required">*</span></label>
-                <div className="input-wrap">
-                  <span className="input-icon"><Map size={16} /></span>
-                  <select id="state" className="form-input" value={form.state} onChange={set('state')} required disabled={loading}>
-                    <option value="" disabled>Select State</option>
-                    {INDIAN_STATES.map(st => (
-                      <option key={st} value={st}>{st}</option>
-                    ))}
-                  </select>
-                </div>
+              {/* International Guest Checkbox */}
+              <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                <label style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '10px',
+                  cursor: 'pointer', padding: '10px 16px',
+                  background: form.is_international ? 'rgba(99,102,241,0.1)' : 'var(--surface-2)',
+                  border: form.is_international ? '1.5px solid var(--primary)' : '1.5px solid var(--border)',
+                  borderRadius: '10px', transition: 'all 0.2s'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={form.is_international}
+                    onChange={e => setForm(f => ({ ...f, is_international: e.target.checked, state: '', country: '' }))}
+                    disabled={loading}
+                    style={{ width: 18, height: 18, accentColor: 'var(--primary)', cursor: 'pointer' }}
+                  />
+                  <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>🌍 International Guest</span>
+                  {form.is_international && (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--primary)', marginLeft: 4 }}>Country required instead of State</span>
+                  )}
+                </label>
               </div>
+
+              {/* State (domestic) OR Country (international) */}
+              {!form.is_international ? (
+                <div className="form-group">
+                  <label className="form-label" htmlFor="state">State <span className="required">*</span></label>
+                  <div className="input-wrap">
+                    <span className="input-icon"><Map size={16} /></span>
+                    <select id="state" className="form-input" value={form.state} onChange={set('state')} required disabled={loading}>
+                      <option value="" disabled>Select State</option>
+                      {INDIAN_STATES.map(st => (
+                        <option key={st} value={st}>{st}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              ) : (
+                <div className="form-group">
+                  <label className="form-label" htmlFor="country">Country <span className="required">*</span></label>
+                  <div className="input-wrap">
+                    <span className="input-icon">🌍</span>
+                    <select id="country" className="form-input" value={form.country} onChange={set('country')} required disabled={loading}>
+                      <option value="" disabled>Select Country</option>
+                      {COUNTRIES.map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
 
               <div className="form-group">
                 <label className="form-label" htmlFor="purpose">Purpose of Visit <span className="required">*</span></label>

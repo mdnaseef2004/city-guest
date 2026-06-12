@@ -18,9 +18,36 @@ const INDIAN_STATES = [
   "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
 ];
 
+const COUNTRIES = [
+  "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia",
+  "Australia", "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus",
+  "Belgium", "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil",
+  "Brunei", "Bulgaria", "Burkina Faso", "Burundi", "Cabo Verde", "Cambodia", "Cameroon", "Canada",
+  "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo", "Costa Rica",
+  "Croatia", "Cuba", "Cyprus", "Czech Republic", "Denmark", "Djibouti", "Dominica", "Dominican Republic",
+  "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini", "Ethiopia",
+  "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada",
+  "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", "Honduras", "Hungary", "Iceland", "Indonesia",
+  "Iran", "Iraq", "Ireland", "Israel", "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya",
+  "Kiribati", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya",
+  "Liechtenstein", "Lithuania", "Luxembourg", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali",
+  "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco",
+  "Mongolia", "Montenegro", "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal",
+  "Netherlands", "New Zealand", "Nicaragua", "Niger", "Nigeria", "North Korea", "North Macedonia",
+  "Norway", "Oman", "Pakistan", "Palau", "Palestine", "Panama", "Papua New Guinea", "Paraguay", "Peru",
+  "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis",
+  "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Sao Tome and Principe",
+  "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia",
+  "Solomon Islands", "Somalia", "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka",
+  "Sudan", "Suriname", "Sweden", "Switzerland", "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand",
+  "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu",
+  "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan",
+  "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
+];
+
 const EMPTY_VISIT = { id: null, visited_place: '', visit_date: '', time_in: '', time_out: '' };
 const EMPTY_FORM = { 
-  id: null, guest_name: '', phone_number: '', place: '', state: '', purpose: '', 
+  id: null, guest_name: '', phone_number: '', place: '', state: '', country: '', is_international: false, purpose: '', 
   donation_amount: '', picked_from: '', picked_time: '', handled_by: '', remarks: '',
   guest_returned: '', return_date: '', return_time: '', visited_places: []
 };
@@ -95,7 +122,9 @@ const GuestRecords = () => {
     setSelected(r);
     setEditForm({
       id: r.id, guest_name: r.guest_name || '', phone_number: r.phone_number || '',
-      place: r.place || '', state: r.state || '', purpose: r.purpose || '', donation_amount: r.donation_amount || '',
+      place: r.place || '', state: r.state || '', country: r.country || '',
+      is_international: r.is_international || false,
+      purpose: r.purpose || '', donation_amount: r.donation_amount || '',
       picked_from: r.picked_from || '', picked_time: r.picked_time || '',
       handled_by: r.handled_by || '', remarks: r.remarks || '',
       guest_returned: r.guest_returned || '', return_date: r.return_date || '', return_time: r.return_time || '',
@@ -221,7 +250,7 @@ Markaz Knowledge City`;
             <table className="table">
               <thead>
                 <tr>
-                  <th>Guest Name</th><th>Address</th><th>State</th><th>Purpose</th>
+                  <th>Guest Name</th><th>Address</th><th>State / Country</th><th>Purpose</th>
                   <th>Donation</th><th>Phone</th><th>Returned</th><th>Date</th>
                   <th>Entered By</th><th>Actions</th>
                 </tr>
@@ -229,9 +258,14 @@ Markaz Knowledge City`;
               <tbody>
                 {records.map(r => (
                   <tr key={r.id}>
-                    <td><strong>{r.guest_name}</strong></td>
+                    <td>
+                      <strong>{r.guest_name}</strong>
+                      {r.is_international && (
+                        <span style={{ marginLeft: 6, fontSize: 10, background: 'rgba(99,102,241,0.15)', color: 'var(--primary)', borderRadius: 6, padding: '1px 6px', fontWeight: 600 }}>🌍 INTL</span>
+                      )}
+                    </td>
                     <td>{r.place}</td>
-                    <td>{r.state || '—'}</td>
+                    <td>{r.is_international ? (r.country || '—') : (r.state || '—')}</td>
                     <td>{r.purpose}</td>
                     <td>₹{Number(r.donation_amount || 0).toLocaleString('en-IN')}</td>
                     <td>{r.phone_number || '—'}</td>
@@ -299,16 +333,41 @@ Markaz Knowledge City`;
             <input type="text" className="form-input no-icon" value={editForm.place}
               onChange={e => setEditForm(f => ({ ...f, place: e.target.value }))} />
           </div>
-          <div className="form-group">
-            <label className="form-label">State</label>
-            <select className="form-input no-icon" value={editForm.state}
-              onChange={e => setEditForm(f => ({ ...f, state: e.target.value }))}>
-              <option value="">Select State</option>
-              {INDIAN_STATES.map(st => (
-                <option key={st} value={st}>{st}</option>
-              ))}
-            </select>
+
+          {/* International toggle in edit modal */}
+          <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '8px 14px', background: editForm.is_international ? 'rgba(99,102,241,0.1)' : 'var(--surface-2)', border: editForm.is_international ? '1.5px solid var(--primary)' : '1.5px solid var(--border)', borderRadius: 10, transition: 'all 0.2s' }}>
+              <input type="checkbox" checked={editForm.is_international}
+                onChange={e => setEditForm(f => ({ ...f, is_international: e.target.checked, state: '', country: '' }))}
+                style={{ width: 16, height: 16, accentColor: 'var(--primary)', cursor: 'pointer' }} />
+              <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>🌍 International Guest</span>
+            </label>
           </div>
+
+          {!editForm.is_international ? (
+            <div className="form-group">
+              <label className="form-label">State</label>
+              <select className="form-input no-icon" value={editForm.state}
+                onChange={e => setEditForm(f => ({ ...f, state: e.target.value }))}>
+                <option value="">Select State</option>
+                {INDIAN_STATES.map(st => (
+                  <option key={st} value={st}>{st}</option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div className="form-group">
+              <label className="form-label">Country</label>
+              <select className="form-input no-icon" value={editForm.country}
+                onChange={e => setEditForm(f => ({ ...f, country: e.target.value }))}>
+                <option value="">Select Country</option>
+                {COUNTRIES.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {[['purpose', 'Purpose', 'text'], ['donation_amount', 'Donation (₹)', 'number'], ['phone_number', 'Phone', 'tel'], ['picked_from', 'Picked From', 'text'], ['picked_time', 'Picked Time', 'time'], ['handled_by', 'Handled By', 'text']].map(([k, lbl, type]) => (
             <div className="form-group" key={k}>
               <label className="form-label">{lbl}</label>
