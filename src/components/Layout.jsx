@@ -1,5 +1,5 @@
 import React, { useState, useEffect, createContext, useRef } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { Moon, Sun, Menu, Camera, Bell, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -111,6 +111,7 @@ function startUrgentSiren(customMessage) {
 
 export default function Layout() {
   const { profile, refreshProfile } = useAuth();
+  const navigate = useNavigate();
   const [dark, setDark] = useState(() =>
     document.documentElement.classList.contains('dark')
   );
@@ -238,7 +239,7 @@ export default function Layout() {
         // Show Toast
         toast.custom((t) => (
           <div
-            onClick={() => toast.dismiss(t.id)}
+            onClick={() => { toast.dismiss(t.id); navigate('/assignments'); }}
             style={{
               display: 'flex', alignItems: 'flex-start', gap: 12,
               background: 'var(--surface)', border: '2px solid var(--primary)',
@@ -312,7 +313,7 @@ export default function Layout() {
   const acknowledgeAlarm = () => {
     stopAlarm();
     setUrgentAlarmActive(false);
-    window.location.href = '/assignments';
+    navigate('/assignments');
   };
 
   const toggleDark = () => {
@@ -393,7 +394,7 @@ export default function Layout() {
                   className="btn btn-ghost btn-icon"
                   style={{ color: notifFlash ? 'var(--primary)' : 'var(--text-muted)' }}
                   title="Notifications"
-                  onClick={() => { window.location.href = '/notifications'; }}
+                  onClick={() => navigate('/notifications')}
                 >
                   <Bell size={18} style={{ animation: notifFlash ? 'bellRing 0.5s ease 3' : 'none' }} />
                   {unreadCount > 0 && (
