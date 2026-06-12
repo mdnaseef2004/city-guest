@@ -274,85 +274,121 @@ Markaz Knowledge City`;
 
   return (
     <div className="page">
-      <div className="page-header" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+
+      {/* ── Page Header ── */}
+      <div className="page-header" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
         <div>
           <h1 className="page-title">Guest Records</h1>
           <p className="page-subtitle">{total} record{total !== 1 ? 's' : ''} found</p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn btn-secondary btn-sm" onClick={() => handleExport('excel')} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <FileSpreadsheet size={16} /> Excel
+        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+          <button className="btn btn-secondary btn-sm" onClick={() => handleExport('excel')}
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <FileSpreadsheet size={15} /> Excel
           </button>
-          <button className="btn btn-secondary btn-sm" onClick={() => handleExport('csv')} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Download size={16} /> CSV
+          <button className="btn btn-secondary btn-sm" onClick={() => handleExport('csv')}
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Download size={15} /> CSV
           </button>
         </div>
       </div>
 
-      {/* Filters */}
+      {/* ── Filters ── */}
       <div className="card mb-4" style={{ overflow: 'visible' }}>
-        <div className="card-body" style={{ padding: '20px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-              <div className="input-wrap" style={{ flex: '1 1 250px' }}>
-                <span className="input-icon"><Search size={16} /></span>
-                <input type="text" className="form-input" placeholder="Search guests by name..."
-                  value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
-                  style={{ borderRadius: '12px' }} />
-              </div>
-              <select className="form-input no-icon text-center" value={placeFilter} onChange={e => { setPlaceFilter(e.target.value); setPage(1); }} style={{ width: 'auto', flex: '1 1 150px', borderRadius: '12px', cursor: 'pointer' }}>
-                <option value="">All Addresses</option>
-                {places.map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
-              <select className="form-input no-icon text-center" value={stateFilter} onChange={e => { setStateFilter(e.target.value); setPage(1); }} style={{ width: 'auto', flex: '1 1 120px', borderRadius: '12px', cursor: 'pointer' }}>
-                <option value="">All States</option>
-                {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-              <select className="form-input no-icon text-center" value={countryFilter} onChange={e => { setCountryFilter(e.target.value); setPage(1); }} style={{ width: 'auto', flex: '1 1 120px', borderRadius: '12px', cursor: 'pointer' }}>
-                <option value="">All Countries</option>
-                {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-              <select className="form-input no-icon text-center" value={purposeFilter} onChange={e => { setPurposeFilter(e.target.value); setPage(1); }} style={{ width: 'auto', flex: '1 1 150px', borderRadius: '12px', cursor: 'pointer' }}>
-                <option value="">All Purposes</option>
-                {purposes.map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
-              {profile?.role === 'super_admin' && (
-                <select className="form-input no-icon text-center" value={adminFilter} onChange={e => { setAdminFilter(e.target.value); setPage(1); }} style={{ width: 'auto', flex: '1 1 150px', borderRadius: '12px', cursor: 'pointer' }}>
-                  <option value="">All Admins</option>
-                  {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                </select>
-              )}
+        <div className="card-body" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+          {/* Row 1 — Search + dropdowns */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+            {/* Search */}
+            <div className="input-wrap" style={{ flex: '2 1 220px', minWidth: 180 }}>
+              <span className="input-icon"><Search size={15} /></span>
+              <input type="text" className="form-input" placeholder="Search guests by name..."
+                value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
+                style={{ borderRadius: 10 }} />
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
-              <DateRangePicker startDate={startDate} endDate={endDate}
-                onStartDateChange={v => { setStartDate(v); setPage(1); }}
-                onEndDateChange={v => { setEndDate(v); setPage(1); }} />
-              {(search || startDate || endDate || placeFilter || purposeFilter || adminFilter || stateFilter || countryFilter) && (
-                <button className="btn btn-ghost btn-sm" onClick={clearFilters} style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--danger)', marginTop: '2px' }}>
-                  <X size={14} /> Clear Filters
-                </button>
-              )}
-            </div>
+
+            {/* Address */}
+            <select className="form-input no-icon" value={placeFilter}
+              onChange={e => { setPlaceFilter(e.target.value); setPage(1); }}
+              style={{ flex: '1 1 140px', minWidth: 120, borderRadius: 10, cursor: 'pointer' }}>
+              <option value="">All Addresses</option>
+              {places.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+
+            {/* State */}
+            <select className="form-input no-icon" value={stateFilter}
+              onChange={e => { setStateFilter(e.target.value); setPage(1); }}
+              style={{ flex: '1 1 130px', minWidth: 110, borderRadius: 10, cursor: 'pointer' }}>
+              <option value="">All States</option>
+              {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+
+            {/* Country */}
+            <select className="form-input no-icon" value={countryFilter}
+              onChange={e => { setCountryFilter(e.target.value); setPage(1); }}
+              style={{ flex: '1 1 130px', minWidth: 110, borderRadius: 10, cursor: 'pointer' }}>
+              <option value="">All Countries</option>
+              {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+
+            {/* Purpose */}
+            <select className="form-input no-icon" value={purposeFilter}
+              onChange={e => { setPurposeFilter(e.target.value); setPage(1); }}
+              style={{ flex: '1 1 140px', minWidth: 120, borderRadius: 10, cursor: 'pointer' }}>
+              <option value="">All Purposes</option>
+              {purposes.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+
+            {/* Admins — super admin only */}
+            {profile?.role === 'super_admin' && (
+              <select className="form-input no-icon" value={adminFilter}
+                onChange={e => { setAdminFilter(e.target.value); setPage(1); }}
+                style={{ flex: '1 1 140px', minWidth: 120, borderRadius: 10, cursor: 'pointer' }}>
+                <option value="">All Admins</option>
+                {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+              </select>
+            )}
+          </div>
+
+          {/* Row 2 — Date range + clear */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <DateRangePicker
+              startDate={startDate} endDate={endDate}
+              onStartDateChange={v => { setStartDate(v); setPage(1); }}
+              onEndDateChange={v => { setEndDate(v); setPage(1); }} />
+            {(search || startDate || endDate || placeFilter || purposeFilter || adminFilter || stateFilter || countryFilter) && (
+              <button className="btn btn-ghost btn-sm" onClick={clearFilters}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--danger)' }}>
+                <X size={14} /> Clear Filters
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Table */}
+      {/* ── Table ── */}
       <div className="card">
         <div className="card-body" style={{ padding: 0, overflowX: 'auto' }}>
           {loading ? (
-            <div style={{ padding: '40px', textAlign: 'center' }}><div className="spinner"></div></div>
+            <div style={{ padding: 40, textAlign: 'center' }}><div className="spinner" /></div>
           ) : records.length === 0 ? (
-            <div className="empty-state" style={{ padding: '48px' }}>
+            <div className="empty-state" style={{ padding: 48 }}>
               <p>No records found. Try adjusting your filters.</p>
             </div>
           ) : (
             <table className="table">
               <thead>
                 <tr>
-                  <th>Guest Name</th><th>Address</th><th>State / Country</th><th>Purpose</th>
-                  <th>Donation</th><th>Phone</th><th>Returned</th><th>Date</th>
-                  <th>Entered By</th><th>Actions</th>
+                  <th>Guest Name</th>
+                  <th>Address</th>
+                  <th>State / Country</th>
+                  <th>Purpose</th>
+                  <th>Donation</th>
+                  <th>Phone</th>
+                  <th>Returned</th>
+                  <th>Date</th>
+                  <th>Entered By</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -361,7 +397,9 @@ Markaz Knowledge City`;
                     <td>
                       <strong>{r.guest_name}</strong>
                       {r.is_international && (
-                        <span style={{ marginLeft: 6, fontSize: 10, background: 'rgba(99,102,241,0.15)', color: 'var(--primary)', borderRadius: 6, padding: '1px 6px', fontWeight: 600 }}>🌍 INTL</span>
+                        <span style={{ marginLeft: 6, fontSize: 10, background: 'rgba(99,102,241,0.15)', color: 'var(--primary)', borderRadius: 6, padding: '1px 6px', fontWeight: 600 }}>
+                          🌍 INTL
+                        </span>
                       )}
                     </td>
                     <td>{r.place}</td>
@@ -369,17 +407,28 @@ Markaz Knowledge City`;
                     <td>{r.purpose}</td>
                     <td>₹{Number(r.donation_amount || 0).toLocaleString('en-IN')}</td>
                     <td>{r.phone_number || '—'}</td>
-                    <td>{r.guest_returned || '—'}</td>
+                    <td>
+                      <span style={{
+                        padding: '2px 8px', borderRadius: 999, fontSize: 12, fontWeight: 600,
+                        background: r.guest_returned === 'Yes' ? 'var(--success-light)' : 'var(--warning-light)',
+                        color: r.guest_returned === 'Yes' ? 'var(--success)' : 'var(--warning)',
+                      }}>
+                        {r.guest_returned || '—'}
+                      </span>
+                    </td>
                     <td>{new Date(r.created_at).toLocaleDateString('en-IN')}</td>
                     <td>{r.profiles?.name || '—'}</td>
                     <td>
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'nowrap' }}>
                         {r.pdf_url && (
-                          <a href={r.pdf_url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-icon" title="Download PDF">
+                          <a href={r.pdf_url} target="_blank" rel="noopener noreferrer"
+                            className="btn btn-ghost btn-icon" title="Download PDF">
                             <Download size={14} />
                           </a>
                         )}
-                        <button className="btn btn-primary btn-sm" title="Send Thank You SMS" onClick={() => handleThankYou(r)} style={{ padding: '4px 8px', fontSize: 12 }}>
+                        <button className="btn btn-primary btn-sm" title="Send Thank You SMS"
+                          onClick={() => handleThankYou(r)}
+                          style={{ padding: '4px 10px', fontSize: 12, whiteSpace: 'nowrap' }}>
                           <MessageSquare size={12} /> Thank You
                         </button>
                         {canEdit(r) && (
@@ -388,8 +437,8 @@ Markaz Knowledge City`;
                           </button>
                         )}
                         {canDelete() && (
-                          <button className="btn btn-ghost btn-icon" title="Delete" onClick={() => openDelete(r)}
-                            style={{ color: 'var(--danger)' }}>
+                          <button className="btn btn-ghost btn-icon" title="Delete"
+                            onClick={() => openDelete(r)} style={{ color: 'var(--danger)' }}>
                             <Trash2 size={14} />
                           </button>
                         )}
@@ -405,7 +454,7 @@ Markaz Knowledge City`;
         {totalPages > 1 && (
           <div className="card-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px' }}>
             <span className="text-muted" style={{ fontSize: '0.875rem' }}>Page {page} of {totalPages}</span>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: 8 }}>
               <button className="btn btn-secondary btn-sm" onClick={() => setPage(p => p - 1)} disabled={page === 1}>
                 <ChevronLeft size={14} />
               </button>
@@ -416,6 +465,7 @@ Markaz Knowledge City`;
           </div>
         )}
       </div>
+
 
       {/* Edit Modal */}
       <Modal isOpen={editModal} onClose={() => setEditModal(false)} title="Edit Guest Entry"
