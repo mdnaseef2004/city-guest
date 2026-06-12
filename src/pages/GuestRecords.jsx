@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, X, Pencil, Trash2, ChevronLeft, ChevronRight, Plus, Map, Download, MessageSquare, FileSpreadsheet } from 'lucide-react';
+import { Search, X, Pencil, Trash2, ChevronLeft, ChevronRight, Plus, Map, Download, MessageSquare, FileSpreadsheet, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import DateRangePicker from '../components/DateRangePicker';
@@ -7,6 +7,16 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { getGuests, getUsers, getUniquePlaces, getUniquePurposes, updateGuest, deleteGuest } from '../lib/supabaseDB';
 import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
+const loadImage = (url) => new Promise((resolve, reject) => {
+  const img = new Image();
+  img.crossOrigin = 'Anonymous';
+  img.onload = () => resolve(img);
+  img.onerror = (e) => reject(e);
+  img.src = url;
+});
 
 const PER_PAGE = 20;
 
@@ -182,7 +192,60 @@ const GuestRecords = () => {
 
       const filename = `Guest_Records_${new Date().toISOString().slice(0, 10)}`;
 
-      if (format === 'csv') {
+      if (format === 'pdf') {
+        const doc = new jsPDF('l', 'pt', 'a4'); // Landscape for many columns
+        
+        // Try to load logo
+        let logoImg = null;
+        try {
+          logoImg = await loadImage('/IMG_2458.PNG');
+        } catch (e) {
+          console.warn("Could not load logo", e);
+        }
+
+        const PAGE_WIDTH = doc.internal.pageSize.getWidth();
+        const MARGIN = 40;
+        
+        // Define header draw function for every page
+        const drawHeader = () => {
+          let titleY = MARGIN + 25;
+          if (logoImg) {
+            const logoHeight = 40;
+            const logoWidth = logoHeight * (logoImg.width / logoImg.height);
+            doc.addImage(logoImg, 'PNG', (PAGE_WIDTH - logoWidth) / 2, MARGIN, logoWidth, logoHeight);
+            titleY = MARGIN + logoHeight + 20;
+          } else {
+            doc.setFontSize(16);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(0, 0, 0);
+            doc.text('CITY GUEST', PAGE_WIDTH / 2, MARGIN, { align: 'center' });
+          }
+          doc.setFontSize(14);
+          doc.setFont('helvetica', 'bold');
+          doc.text('GUEST RECORDS', PAGE_WIDTH / 2, titleY, { align: 'center' });
+          
+          // Divider
+          doc.setDrawColor(200, 200, 200);
+          doc.setLineWidth(1);
+          doc.line(MARGIN, titleY + 15, PAGE_WIDTH - MARGIN, titleY + 15);
+        };
+
+        const keys = Object.keys(rows[0]);
+        const bodyData = rows.map(r => keys.map(k => String(r[k] ?? '')));
+
+        autoTable(doc, {
+          startY: 140, // Leave space for header
+          head: [keys],
+          body: bodyData,
+          margin: { top: 140, left: MARGIN, right: MARGIN },
+          theme: 'grid',
+          headStyles: { fillColor: [5, 150, 105], textColor: [255, 255, 255], fontSize: 8 }, // Emerald theme
+          bodyStyles: { fontSize: 8 },
+          didDrawPage: drawHeader
+        });
+
+        doc.save(`${filename}.pdf`);
+      } else if (format === 'csv') {
         const keys = Object.keys(rows[0]);
         const csv = [keys.join(','), ...rows.map(row => keys.map(k => `"${String(row[k] ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
         const a = document.createElement('a');
@@ -283,6 +346,10 @@ Markaz Knowledge City`;
           <p className="page-subtitle">{total} record{total !== 1 ? 's' : ''} found</p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+          <button className="btn btn-secondary btn-sm" onClick={() => handleExport('pdf')}
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <FileText size={15} /> PDF
+          </button>
           <button className="btn btn-secondary btn-sm" onClick={() => handleExport('excel')}
             style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <FileSpreadsheet size={15} /> Excel
