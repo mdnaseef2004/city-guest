@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Bell, Plus, CheckCircle, Clock, AlertCircle, Trash2, User, Calendar, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
@@ -26,6 +26,8 @@ export default function Assignments() {
   const [saving, setSaving]           = useState(false);
   const [form, setForm]               = useState({ guest_name: '', notes: '', assigned_to: '', due_date: '', is_urgent: false });
 
+  const loadRef = useRef(null);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -38,18 +40,22 @@ export default function Assignments() {
     }
   }, []);
 
-  useEffect(() => { 
-    load(); 
-    
-    // Real-time sync for Assignments page
-    const channel = supabase.channel('assignments_page_sync')
+  // Keep ref always pointing to latest load
+  useEffect(() => { loadRef.current = load; }, [load]);
+
+  // Initial fetch
+  useEffect(() => { load(); }, [load]);
+
+  // Real-time sync — created ONCE, uses ref to stay current
+  useEffect(() => {
+    const channelName = `assignments_page_${Date.now()}`;
+    const channel = supabase.channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'guest_assignments' }, () => {
-        load();
+        loadRef.current?.();
       })
       .subscribe();
-
     return () => { channel.unsubscribe(); };
-  }, [load]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (isSuperAdmin) getUsers().then(u => setUsers(u.filter(x => x.role === 'sub_admin')));

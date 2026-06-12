@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Users, IndianRupee, UserCheck, TrendingUp, Download, FileSpreadsheet } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import * as XLSX from 'xlsx';
@@ -42,25 +42,32 @@ const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchStatsRef = useRef(null);
+
+  const fetchStats = useCallback(() => {
+    getDashboardStats()
+      .then(setStats)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Keep ref always pointing to latest fetchStats
+  useEffect(() => { fetchStatsRef.current = fetchStats; }, [fetchStats]);
+
+  // Initial fetch
+  useEffect(() => { fetchStats(); }, [fetchStats]);
+
+  // Real-time sync — created once, uses ref to avoid stale closures
   useEffect(() => {
-    const fetchStats = () => {
-      getDashboardStats()
-        .then(setStats)
-        .catch(console.error)
-        .finally(() => setLoading(false));
-    };
-
-    fetchStats();
-
-    // Real-time sync for Dashboard stats
-    const channel = supabase.channel('dashboard_stats_sync')
+    const channelName = `dashboard_stats_${Date.now()}`;
+    const channel = supabase.channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'guest_visits' }, () => {
-        fetchStats();
+        fetchStatsRef.current?.();
       })
       .subscribe();
 
     return () => { channel.unsubscribe(); };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fmt = (n) => Number(n || 0).toLocaleString('en-IN');
 

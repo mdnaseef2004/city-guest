@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, X, Pencil, Trash2, ChevronLeft, ChevronRight, Plus, Map, Download, MessageSquare } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
@@ -75,6 +75,8 @@ const GuestRecords = () => {
   const [selected, setSelected] = useState(null);
   const [editForm, setEditForm] = useState(EMPTY_FORM);
 
+  const fetchRecordsRef = useRef(null);
+
   const fetchRecords = useCallback(async () => {
     setLoading(true);
     try {
@@ -94,18 +96,22 @@ const GuestRecords = () => {
     }
   }, [search, startDate, endDate, placeFilter, purposeFilter, adminFilter, page]);
 
-  useEffect(() => { 
-    fetchRecords(); 
-    
-    // Real-time sync for Guest Records page
-    const channel = supabase.channel('guest_records_sync')
+  // Keep ref always pointing to latest fetchRecords
+  useEffect(() => { fetchRecordsRef.current = fetchRecords; }, [fetchRecords]);
+
+  // Fetch on filter/page changes
+  useEffect(() => { fetchRecords(); }, [fetchRecords]);
+
+  // Real-time sync — created ONCE on mount, uses ref to stay current
+  useEffect(() => {
+    const channelName = `guest_records_${Date.now()}`;
+    const channel = supabase.channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'guest_visits' }, () => {
-        fetchRecords();
+        fetchRecordsRef.current?.();
       })
       .subscribe();
-
     return () => { channel.unsubscribe(); };
-  }, [fetchRecords]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     getUniquePlaces().then(setPlaces);

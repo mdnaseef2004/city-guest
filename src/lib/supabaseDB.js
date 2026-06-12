@@ -456,7 +456,7 @@ export async function deleteAssignment(id) {
 }
 
 export function subscribeToAssignments(userId, callback) {
-  return supabase.channel('assignments')
+  return supabase.channel(`assignments_${userId}_${Date.now()}`)
     .on('postgres_changes', {
       event: 'INSERT',
       schema: 'public',
@@ -518,7 +518,7 @@ export async function sendUrgentReminder(assigned_to, guest_name) {
 }
 
 export function subscribeToReminders(userId, callback) {
-  const channel = supabase.channel('reminders_listener');
+  const channel = supabase.channel(`reminders_listener_${userId}_${Date.now()}`);
   channel.on('broadcast', { event: 'urgent_reminder' }, ({ payload }) => {
     if (payload.assigned_to === userId) {
       callback(payload);
@@ -618,7 +618,7 @@ export async function deleteNotification(id) {
 }
 
 export function subscribeToNotifications(userId, callback) {
-  return supabase.channel('app_notifications_channel')
+  return supabase.channel(`app_notifications_channel_${userId}_${Date.now()}`)
     .on('postgres_changes', {
       event: '*',
       schema: 'public',

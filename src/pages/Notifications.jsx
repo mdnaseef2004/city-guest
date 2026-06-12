@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Bell, CheckCircle, Clock, Info, Trash2, AlertTriangle } from 'lucide-react';
 import { getNotifications, markNotificationsRead, deleteNotification, subscribeToNotifications } from '../lib/supabaseDB';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,20 +9,9 @@ const Notifications = () => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!profile) return;
-    fetchNotifications();
+  const fetchRef = useRef(null);
 
-    const sub = subscribeToNotifications(profile.id, () => {
-      fetchNotifications();
-    });
-
-    return () => {
-      if (sub) sub.unsubscribe();
-    };
-  }, [profile]);
-
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
       const data = await getNotifications();
       setNotifications(data);
@@ -31,7 +20,22 @@ const Notifications = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => { fetchRef.current = fetchNotifications; }, [fetchNotifications]);
+
+  useEffect(() => {
+    if (!profile) return;
+    fetchNotifications();
+
+    const sub = subscribeToNotifications(profile.id, () => {
+      fetchRef.current?.();
+    });
+
+    return () => {
+      if (sub) sub.unsubscribe();
+    };
+  }, [profile, fetchNotifications]);
 
   const handleMarkAllRead = async () => {
     try {
