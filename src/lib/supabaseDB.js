@@ -470,7 +470,7 @@ export function subscribeToAssignments(userId, callback) {
 
 export async function sendUrgentReminder(assigned_to, guest_name) {
   // Send realtime broadcast (works when app is open)
-  const channel = supabase.channel('reminders');
+  const channel = supabase.channel('urgent_reminders_broadcast');
   await new Promise((resolve, reject) => {
     channel.subscribe(async (status) => {
       if (status === 'SUBSCRIBED') {
@@ -518,7 +518,7 @@ export async function sendUrgentReminder(assigned_to, guest_name) {
 }
 
 export function subscribeToReminders(userId, callback) {
-  const channel = supabase.channel(`reminders_listener_${userId}_${Date.now()}`);
+  const channel = supabase.channel('urgent_reminders_broadcast');
   channel.on('broadcast', { event: 'urgent_reminder' }, ({ payload }) => {
     if (payload.assigned_to === userId) {
       callback(payload);
