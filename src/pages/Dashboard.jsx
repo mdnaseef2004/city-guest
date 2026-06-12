@@ -6,6 +6,7 @@ import StatsCard from '../components/StatsCard';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { getDashboardStats } from '../lib/supabaseDB';
+import { formatDate } from '../utils/dateUtils';
 
 const COLORS = ['#059669', '#10b981', '#34d399', '#0d9488', '#6ee7b7', '#047857'];
 
@@ -70,7 +71,7 @@ const PerfTable = ({ rows, fmt, label }) => (
             }}>{r.totalEntries}</span>
           </td>
           <td>₹{fmt(r.totalDonations)}</td>
-          <td>{r.lastEntry ? new Date(r.lastEntry).toLocaleDateString('en-IN', { dateStyle: 'medium' }) : '—'}</td>
+          <td>{r.lastEntry ? formatDate(r.lastEntry) : '—'}</td>
         </tr>
       ))}
       {rows.length === 0 && (
@@ -140,7 +141,7 @@ const PerfSection = ({ stats, fmt }) => {
               [label]: r.name,
               'Total Entries': r.totalEntries,
               'Total Donations (₹)': r.totalDonations,
-              'Last Entry': r.lastEntry ? new Date(r.lastEntry).toLocaleDateString('en-IN') : '—',
+              'Last Entry': r.lastEntry ? formatDate(r.lastEntry) : '—',
             }))}
             filename={filename}
           />

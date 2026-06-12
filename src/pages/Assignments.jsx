@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { formatDate } from '../utils/dateUtils';
 import {
   createAssignment, getAssignments, updateAssignmentStatus,
   deleteAssignment, getUsers, sendUrgentReminder
@@ -202,7 +203,7 @@ export default function Assignments() {
                         )}
                         {a.due_date && (
                           <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--primary)' }}>
-                            <Calendar size={11} /> Due: {new Date(a.due_date).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
+                            <Calendar size={11} /> Due: {formatDate(a.due_date)}
                           </span>
                         )}
                         <span>

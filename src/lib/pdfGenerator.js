@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { formatDate } from '../utils/dateUtils';
 
 const loadImage = (url) => new Promise((resolve, reject) => {
   const img = new Image();
@@ -61,7 +62,7 @@ export const generateGuestVisitPDF = async (guestData) => {
     startY: currentY,
     body: [
       ['Guest Name:', guestData.guest_name, 'Picked From:', guestData.picked_from || '—'],
-      ['Phone Number:', guestData.phone_number || guestData.mobile_number, 'Picked Date:', guestData.picked_date ? new Date(guestData.picked_date).toLocaleDateString('en-IN') : '—'],
+      ['Phone Number:', guestData.phone_number || guestData.mobile_number, 'Picked Date:', formatDate(guestData.picked_date)],
       ['Address:', guestData.place, 'Picked Time:', guestData.picked_time || '—'],
       ['State/Country:', guestData.is_international ? guestData.country : guestData.state, 'Donation:', guestData.donation_amount ? `Rs. ${Number(guestData.donation_amount).toLocaleString('en-IN')}` : '—'],
     ],

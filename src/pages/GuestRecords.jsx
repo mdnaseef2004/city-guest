@@ -9,6 +9,7 @@ import { getGuests, getUsers, getUniquePlaces, getUniquePurposes, updateGuest, d
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { formatDate } from '../utils/dateUtils';
 
 const loadImage = (url) => new Promise((resolve, reject) => {
   const img = new Image();
@@ -198,16 +199,16 @@ const GuestRecords = () => {
         const isFullMonth = sd.getMonth() === ed.getMonth() && sd.getFullYear() === ed.getFullYear() && sd.getDate() === 1 && new Date(ed.getFullYear(), ed.getMonth() + 1, 0).getDate() === ed.getDate();
         
         if (isFullMonth) {
-          reportTitle = `${sd.toLocaleString('en-US', { month: 'long', year: 'numeric' })} Guest Report`;
-        } else if (startDate === endDate) {
-          reportTitle = `Guest Report for ${sd.toLocaleDateString('en-IN')}`;
+          reportTitle = `${sd.toLocaleString('en-US', { month: 'long', year: 'numeric' }).toUpperCase()} GUEST REPORT`;
+        } else if (sd.getTime() === ed.getTime()) {
+          reportTitle = `Guest Report for ${formatDate(startDate)}`;
         } else {
-          reportTitle = `Guest Report (${sd.toLocaleDateString('en-IN')} to ${ed.toLocaleDateString('en-IN')})`;
+          reportTitle = `Guest Report (${formatDate(startDate)} to ${formatDate(endDate)})`;
         }
       } else if (startDate) {
-        reportTitle = `Guest Report (From ${new Date(startDate).toLocaleDateString('en-IN')})`;
+        reportTitle = `Guest Report (From ${formatDate(startDate)})`;
       } else if (endDate) {
-        reportTitle = `Guest Report (Until ${new Date(endDate).toLocaleDateString('en-IN')})`;
+        reportTitle = `Guest Report (Until ${formatDate(endDate)})`;
       }
 
       const locations = [stateFilter, countryFilter, placeFilter].filter(Boolean);
@@ -501,7 +502,7 @@ Markaz Knowledge City`;
                     <td>{r.is_international ? (r.country || '—') : (r.state || '—')}</td>
                     <td>{r.purpose}</td>
                     <td>₹{Number(r.donation_amount || 0).toLocaleString('en-IN')}</td>
-                    <td>{r.picked_date ? new Date(r.picked_date).toLocaleDateString('en-IN') : '—'}</td>
+                    <td>{r.picked_date ? formatDate(r.picked_date) : '—'}</td>
                     <td>{r.phone_number || '—'}</td>
                     <td>
                       <span style={{
@@ -512,7 +513,7 @@ Markaz Knowledge City`;
                         {r.guest_returned || '—'}
                       </span>
                     </td>
-                    <td>{new Date(r.created_at).toLocaleDateString('en-IN')}</td>
+                    <td>{formatDate(r.created_at)}</td>
                     <td>{r.handled_by || '—'}</td>
                     <td>{r.profiles?.name || '—'}</td>
                     <td>

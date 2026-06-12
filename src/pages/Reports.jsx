@@ -6,6 +6,7 @@ import autoTable from 'jspdf-autotable';
 import DateRangePicker from '../components/DateRangePicker';
 import { useAuth } from '../contexts/AuthContext';
 import { getAllGuestsForReports, getUsers } from '../lib/supabaseDB';
+import { formatDate } from '../utils/dateUtils';
 
 const fmt = (n) => Number(n || 0).toLocaleString('en-IN');
 const today = () => new Date().toISOString().slice(0, 10);
@@ -106,7 +107,7 @@ const DetailedTable = ({ rows }) => (
       </tr></thead>
         <tbody>{rows.map(r => <tr key={r.id}>
           <td>{r.guest_name}</td><td>{r.place}</td><td>{r.is_international ? r.country : (r.state || '—')}</td><td><strong>₹{fmt(r.donation_amount)}</strong></td>
-          <td>{r.phone_number || r.mobile_number || '—'}</td><td>{r.handled_by || '—'}</td><td>{r.profiles?.name}</td><td>{new Date(r.created_at).toLocaleDateString('en-IN')}</td>
+          <td>{r.phone_number || r.mobile_number || '—'}</td><td>{r.handled_by || '—'}</td><td>{r.profiles?.name}</td><td>{formatDate(r.created_at)}</td>
         </tr>)}</tbody>
       </table>
     )}
@@ -198,7 +199,7 @@ const Reports = () => {
   const mapExportData = (rows) => rows.map(r => ({
     'Guest Name': r.guest_name, 'Address': r.place, 'State': r.is_international ? '' : r.state || '', 'Country': r.is_international ? r.country : '',
     'Donation (₹)': r.donation_amount || 0, 'Phone Number': r.phone_number || r.mobile_number || '',
-    'Handled By': r.handled_by || '', 'Entered By': r.profiles?.name || 'Unknown', 'Date Entered': new Date(r.created_at).toLocaleDateString('en-IN')
+    'Handled By': r.handled_by || '', 'Entered By': r.profiles?.name || 'Unknown', 'Date Entered': formatDate(r.created_at)
   }));
 
   const tabs = [
@@ -236,7 +237,7 @@ const Reports = () => {
               <input type="date" className="form-input no-icon" value={dailyDate} onChange={e => setDailyDate(e.target.value)} style={{ width: 'auto' }} />
             </div>
             <div style={{ marginTop: 'auto' }}>
-              <ExportButtons getData={() => mapExportData(dailyRows)} filename={`Daily_Report_${dailyDate}`} title={`Daily Guest Report - ${new Date(dailyDate).toLocaleDateString('en-IN')}`} />
+              <ExportButtons getData={() => mapExportData(dailyRows)} filename={`Daily_Report_${dailyDate}`} title={`Daily Guest Report - ${formatDate(dailyDate)}`} />
             </div>
           </div></div>
           <div className="stats-grid mb-4">

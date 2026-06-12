@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import { useAuth } from '../contexts/AuthContext';
 import { getUsers, createUser, updateUser, deleteUser } from '../lib/supabaseDB';
+import { formatDate } from '../utils/dateUtils';
 
 const EMPTY = { name: '', email: '', password: '', role: 'sub_admin' };
 
@@ -115,7 +116,7 @@ const UserManagement = () => {
                         {u.is_active ? 'Active' : 'Disabled'}
                       </span>
                     </td>
-                    <td>{new Date(u.created_at).toLocaleDateString('en-IN')}</td>
+                    <td>{formatDate(u.created_at)}</td>
                     <td>
                       {u.id !== profile?.id && (
                         <div style={{ display: 'flex', gap: '8px' }}>
