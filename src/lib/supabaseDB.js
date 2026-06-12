@@ -212,7 +212,7 @@ export async function checkDuplicateGuest(guestName) {
   return data && data.length > 0;
 }
 
-export async function getGuests({ search, startDate, endDate, place, purpose, createdBy, page = 1, perPage = 20 } = {}) {
+export async function getGuests({ search, startDate, endDate, place, purpose, createdBy, stateFilter, countryFilter, page = 1, perPage = 20 } = {}) {
   const { data: { user } } = await supabase.auth.getUser();
   const { data: myProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
 
@@ -225,6 +225,8 @@ export async function getGuests({ search, startDate, endDate, place, purpose, cr
   if (place) query = query.eq('place', place);
   if (purpose) query = query.eq('purpose', purpose);
   if (createdBy) query = query.eq('created_by', createdBy);
+  if (stateFilter) query = query.eq('state', stateFilter);
+  if (countryFilter) query = query.eq('country', countryFilter);
   if (startDate) query = query.gte('created_at', startDate);
   if (endDate) query = query.lte('created_at', endDate);
 
@@ -336,6 +338,17 @@ export async function getDashboardStats() {
     };
   }).sort((a, b) => b.totalEntries - a.totalEntries);
 
+  const superAdminPerf = u.filter(x => x.role === 'super_admin').map(x => {
+    const ug = g.filter(r => r.created_by === x.id);
+    const last = [...ug].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+    return {
+      name: x.name,
+      totalEntries: ug.length,
+      totalDonations: ug.reduce((s, r) => s + (r.donation_amount || 0), 0),
+      lastEntry: last?.created_at || null,
+    };
+  }).sort((a, b) => b.totalEntries - a.totalEntries);
+
   return {
     totalGuests: g.length,
     totalDonations: g.reduce((s, x) => s + (x.donation_amount || 0), 0),
@@ -344,6 +357,7 @@ export async function getDashboardStats() {
     guestsByPlace,
     guestsByPurpose,
     subAdminPerf,
+    superAdminPerf,
   };
 }
 

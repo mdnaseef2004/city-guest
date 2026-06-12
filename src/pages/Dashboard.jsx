@@ -37,6 +37,124 @@ const ExportButtons = ({ getData, filename }) => (
   </div>
 );
 
+const TAB_STYLES = (active) => ({
+  padding: '8px 20px',
+  borderRadius: '10px',
+  border: 'none',
+  cursor: 'pointer',
+  fontWeight: 600,
+  fontSize: 14,
+  transition: 'all 0.2s',
+  background: active ? 'var(--primary)' : 'transparent',
+  color: active ? '#fff' : 'var(--text-muted)',
+});
+
+const PerfTable = ({ rows, fmt, label }) => (
+  <table className="table">
+    <thead>
+      <tr>
+        <th>{label} Name</th>
+        <th>Total Entries</th>
+        <th>Total Donations</th>
+        <th>Last Entry</th>
+      </tr>
+    </thead>
+    <tbody>
+      {rows.map((r, i) => (
+        <tr key={i}>
+          <td style={{ fontWeight: 600 }}>{r.name}</td>
+          <td>
+            <span style={{
+              background: 'var(--primary-light)', color: 'var(--primary)',
+              padding: '2px 10px', borderRadius: 999, fontWeight: 700, fontSize: 13,
+            }}>{r.totalEntries}</span>
+          </td>
+          <td>₹{fmt(r.totalDonations)}</td>
+          <td>{r.lastEntry ? new Date(r.lastEntry).toLocaleDateString('en-IN', { dateStyle: 'medium' }) : '—'}</td>
+        </tr>
+      ))}
+      {rows.length === 0 && (
+        <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 24 }}>No data yet</td></tr>
+      )}
+    </tbody>
+  </table>
+);
+
+const PerfSection = ({ stats, fmt }) => {
+  const [perfTab, setPerfTab] = React.useState('sub');
+  const isSub = perfTab === 'sub';
+  const rows = isSub ? (stats?.subAdminPerf || []) : (stats?.superAdminPerf || []);
+  const label = isSub ? 'Sub Admin' : 'Super Admin';
+  const barColor = isSub ? '#8b5cf6' : '#0ea5e9';
+  const filename = isSub ? 'subadmin-performance' : 'superadmin-performance';
+
+  return (
+    <div style={{ marginTop: 24 }}>
+      {/* Chart */}
+      {rows.length > 0 && (
+        <div className="charts-grid" style={{ marginBottom: 0 }}>
+          <div className="card">
+            <div className="card-header"><h3 className="card-title">Guests Handled – {label}</h3></div>
+            <div className="card-body">
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={rows} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
+                  <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} allowDecimals={false} />
+                  <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} />
+                  <Bar dataKey="totalEntries" fill={barColor} radius={[4, 4, 0, 0]} name="Total Entries" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+          <div className="card">
+            <div className="card-header"><h3 className="card-title">Donations Collected – {label}</h3></div>
+            <div className="card-body">
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={rows} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
+                  <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
+                  <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} formatter={(val) => `₹${fmt(val)}`} />
+                  <Bar dataKey="totalDonations" fill="#10b981" radius={[4, 4, 0, 0]} name="Total Donations" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Table with tabs */}
+      <div className="card mt-4">
+        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', gap: 4, background: 'var(--background)', padding: 4, borderRadius: 12 }}>
+            <button style={TAB_STYLES(perfTab === 'sub')} onClick={() => setPerfTab('sub')}>
+              👤 Sub Admin
+            </button>
+            <button style={TAB_STYLES(perfTab === 'super')} onClick={() => setPerfTab('super')}>
+              👑 Super Admin
+            </button>
+          </div>
+          <ExportButtons
+            getData={() => rows.map(r => ({
+              [label]: r.name,
+              'Total Entries': r.totalEntries,
+              'Total Donations (₹)': r.totalDonations,
+              'Last Entry': r.lastEntry ? new Date(r.lastEntry).toLocaleDateString('en-IN') : '—',
+            }))}
+            filename={filename}
+          />
+        </div>
+        <div className="card-body" style={{ overflowX: 'auto', padding: 0 }}>
+          <div style={{ padding: '0 8px' }}>
+            <PerfTable rows={rows} fmt={fmt} label={label} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Dashboard = () => {
   const { profile } = useAuth();
   const [stats, setStats] = useState(null);
@@ -123,77 +241,13 @@ const Dashboard = () => {
                 </div>
               </div>
             )}
-
-            {profile?.role === 'super_admin' && stats?.subAdminPerf?.length > 0 && (
-              <>
-                <div className="card">
-                  <div className="card-header"><h3 className="card-title">Guests Handled by Sub Admin</h3></div>
-                  <div className="card-body">
-                    <ResponsiveContainer width="100%" height={250}>
-                      <BarChart data={stats.subAdminPerf} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                        <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
-                        <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} allowDecimals={false} />
-                        <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} />
-                        <Bar dataKey="totalEntries" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="Total Entries" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                <div className="card">
-                  <div className="card-header"><h3 className="card-title">Donations by Sub Admin</h3></div>
-                  <div className="card-body">
-                    <ResponsiveContainer width="100%" height={250}>
-                      <BarChart data={stats.subAdminPerf} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                        <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
-                        <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
-                        <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} formatter={(val) => `₹${fmt(val)}`} />
-                        <Bar dataKey="totalDonations" fill="#10b981" radius={[4, 4, 0, 0]} name="Total Donations" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </>
-            )}
           </div>
 
-          {profile?.role === 'super_admin' && stats?.subAdminPerf?.length > 0 && (
-            <div className="card mt-4">
-              <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 className="card-title">Sub Admin Performance</h3>
-                <ExportButtons 
-                  getData={() => stats.subAdminPerf.map(sa => ({
-                    'Sub Admin': sa.name,
-                    'Total Entries': sa.totalEntries,
-                    'Total Donations (₹)': sa.totalDonations,
-                    'Last Entry': sa.lastEntry ? new Date(sa.lastEntry).toLocaleDateString('en-IN') : '—'
-                  }))} 
-                  filename="subadmin-performance" 
-                />
-              </div>
-              <div className="card-body" style={{ overflowX: 'auto' }}>
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Name</th><th>Total Entries</th><th>Total Donations</th><th>Last Entry</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {stats.subAdminPerf.map((sa, i) => (
-                      <tr key={i}>
-                        <td>{sa.name}</td>
-                        <td>{sa.totalEntries}</td>
-                        <td>₹{fmt(sa.totalDonations)}</td>
-                        <td>{sa.lastEntry ? new Date(sa.lastEntry).toLocaleDateString('en-IN') : '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+
+          {profile?.role === 'super_admin' && (stats?.subAdminPerf?.length > 0 || stats?.superAdminPerf?.length > 0) && (
+            <PerfSection stats={stats} fmt={fmt} />
           )}
+
 
           {stats?.totalGuests === 0 && (
             <div className="empty-state" style={{ marginTop: '2rem' }}>

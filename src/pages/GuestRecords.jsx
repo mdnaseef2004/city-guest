@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, X, Pencil, Trash2, ChevronLeft, ChevronRight, Plus, Map, Download, MessageSquare } from 'lucide-react';
+import { Search, X, Pencil, Trash2, ChevronLeft, ChevronRight, Plus, Map, Download, MessageSquare, FileSpreadsheet } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import DateRangePicker from '../components/DateRangePicker';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { getGuests, getUsers, getUniquePlaces, getUniquePurposes, updateGuest, deleteGuest } from '../lib/supabaseDB';
+import * as XLSX from 'xlsx';
 
 const PER_PAGE = 20;
 
@@ -39,10 +40,26 @@ const COUNTRIES = [
   "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Sao Tome and Principe",
   "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia",
   "Solomon Islands", "Somalia", "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka",
-  "Sudan", "Suriname", "Sweden", "Switzerland", "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand",
+  "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo (Congo-Brazzaville)",
+  "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czechia (Czech Republic)", "Democratic Republic of the Congo",
+  "Denmark", "Djibouti", "Dominica", "Dominican Republic", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea",
+  "Eritrea", "Estonia", "Eswatini (fmr. Swaziland)", "Ethiopia", "Fiji", "Finland", "France", "Gabon",
+  "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau",
+  "Guyana", "Haiti", "Holy See", "Honduras", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq",
+  "Ireland", "Israel", "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati", "Kuwait",
+  "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania",
+  "Luxembourg", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands", "Mauritania",
+  "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro", "Morocco", "Mozambique",
+  "Myanmar (formerly Burma)", "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand", "Nicaragua", "Niger",
+  "Nigeria", "North Korea", "North Macedonia", "Norway", "Oman", "Pakistan", "Palau", "Palestine State", "Panama",
+  "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia",
+  "Rwanda", "Saint Kitts and Nevis", "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino",
+  "Sao Tome and Principe", "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore",
+  "Slovakia", "Slovenia", "Solomon Islands", "Somalia", "South Africa", "South Korea", "South Sudan", "Spain",
+  "Sri Lanka", "Sudan", "Suriname", "Sweden", "Switzerland", "Syria", "Tajikistan", "Tanzania", "Thailand",
   "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu",
-  "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan",
-  "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
+  "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States of America", "Uruguay", "Uzbekistan",
+  "Vanuatu", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
 ];
 
 const EMPTY_VISIT = { id: null, visited_place: '', visit_date: '', time_in: '', time_out: '' };
@@ -65,6 +82,8 @@ const GuestRecords = () => {
   const [placeFilter, setPlaceFilter] = useState('');
   const [purposeFilter, setPurposeFilter] = useState('');
   const [adminFilter, setAdminFilter] = useState('');
+  const [stateFilter, setStateFilter] = useState('');
+  const [countryFilter, setCountryFilter] = useState('');
 
   const [places, setPlaces] = useState([]);
   const [purposes, setPurposes] = useState([]);
@@ -85,7 +104,7 @@ const GuestRecords = () => {
         startDate: startDate ? startDate + 'T00:00:00.000Z' : '',
         endDate: endDate ? endDate + 'T23:59:59.999Z' : '',
         place: placeFilter, purpose: purposeFilter,
-        createdBy: adminFilter, page, perPage: PER_PAGE,
+        createdBy: adminFilter, stateFilter, countryFilter, page, perPage: PER_PAGE,
       });
       setRecords(data);
       setTotal(total);
@@ -94,7 +113,7 @@ const GuestRecords = () => {
     } finally {
       setLoading(false);
     }
-  }, [search, startDate, endDate, placeFilter, purposeFilter, adminFilter, page]);
+  }, [search, startDate, endDate, placeFilter, purposeFilter, adminFilter, stateFilter, countryFilter, page]);
 
   // Keep ref always pointing to latest fetchRecords
   useEffect(() => { fetchRecordsRef.current = fetchRecords; }, [fetchRecords]);
@@ -121,7 +140,64 @@ const GuestRecords = () => {
 
   const clearFilters = () => {
     setSearch(''); setStartDate(''); setEndDate('');
-    setPlaceFilter(''); setPurposeFilter(''); setAdminFilter(''); setPage(1);
+    setPlaceFilter(''); setPurposeFilter(''); setAdminFilter('');
+    setStateFilter(''); setCountryFilter(''); setPage(1);
+  };
+
+  const handleExport = async (format) => {
+    const t = toast.loading(`Preparing ${format.toUpperCase()}...`);
+    try {
+      // Fetch all matching without pagination
+      const { data } = await getGuests({
+        search,
+        startDate: startDate ? startDate + 'T00:00:00.000Z' : '',
+        endDate: endDate ? endDate + 'T23:59:59.999Z' : '',
+        place: placeFilter, purpose: purposeFilter,
+        createdBy: adminFilter, stateFilter, countryFilter, page: 1, perPage: 100000,
+      });
+
+      if (!data.length) {
+        toast.error('No records to export', { id: t });
+        return;
+      }
+
+      const rows = data.map(r => ({
+        'Guest Name': r.guest_name,
+        'Address': r.place,
+        'State': r.state || '',
+        'Country': r.country || '',
+        'Phone Number': r.phone_number || '',
+        'Purpose': r.purpose,
+        'Donation (₹)': r.donation_amount || 0,
+        'Picked From': r.picked_from || '',
+        'Picked Time': r.picked_time || '',
+        'Returned': r.guest_returned,
+        'Return Date': r.return_date || '',
+        'Return Time': r.return_time || '',
+        'Remarks': r.remarks || '',
+        'Entered By': r.profiles?.name || 'Unknown',
+        'Date Entered': new Date(r.created_at).toLocaleString('en-IN')
+      }));
+
+      const filename = `Guest_Records_${new Date().toISOString().slice(0, 10)}`;
+
+      if (format === 'csv') {
+        const keys = Object.keys(rows[0]);
+        const csv = [keys.join(','), ...rows.map(row => keys.map(k => `"${String(row[k] ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+        a.download = `${filename}.csv`;
+        a.click();
+      } else {
+        const ws = XLSX.utils.json_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Records');
+        XLSX.writeFile(wb, `${filename}.xlsx`);
+      }
+      toast.success('Export complete', { id: t });
+    } catch (e) {
+      toast.error('Export failed: ' + e.message, { id: t });
+    }
   };
 
   const openEdit = (r) => {
@@ -198,9 +274,19 @@ Markaz Knowledge City`;
 
   return (
     <div className="page">
-      <div className="page-header">
-        <h1 className="page-title">Guest Records</h1>
-        <p className="page-subtitle">{total} record{total !== 1 ? 's' : ''} found</p>
+      <div className="page-header" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+        <div>
+          <h1 className="page-title">Guest Records</h1>
+          <p className="page-subtitle">{total} record{total !== 1 ? 's' : ''} found</p>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-secondary btn-sm" onClick={() => handleExport('excel')} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <FileSpreadsheet size={16} /> Excel
+          </button>
+          <button className="btn btn-secondary btn-sm" onClick={() => handleExport('csv')} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Download size={16} /> CSV
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -218,6 +304,14 @@ Markaz Knowledge City`;
                 <option value="">All Addresses</option>
                 {places.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
+              <select className="form-input no-icon text-center" value={stateFilter} onChange={e => { setStateFilter(e.target.value); setPage(1); }} style={{ width: 'auto', flex: '1 1 120px', borderRadius: '12px', cursor: 'pointer' }}>
+                <option value="">All States</option>
+                {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <select className="form-input no-icon text-center" value={countryFilter} onChange={e => { setCountryFilter(e.target.value); setPage(1); }} style={{ width: 'auto', flex: '1 1 120px', borderRadius: '12px', cursor: 'pointer' }}>
+                <option value="">All Countries</option>
+                {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
               <select className="form-input no-icon text-center" value={purposeFilter} onChange={e => { setPurposeFilter(e.target.value); setPage(1); }} style={{ width: 'auto', flex: '1 1 150px', borderRadius: '12px', cursor: 'pointer' }}>
                 <option value="">All Purposes</option>
                 {purposes.map(p => <option key={p} value={p}>{p}</option>)}
@@ -233,7 +327,7 @@ Markaz Knowledge City`;
               <DateRangePicker startDate={startDate} endDate={endDate}
                 onStartDateChange={v => { setStartDate(v); setPage(1); }}
                 onEndDateChange={v => { setEndDate(v); setPage(1); }} />
-              {(search || startDate || endDate || placeFilter || purposeFilter || adminFilter) && (
+              {(search || startDate || endDate || placeFilter || purposeFilter || adminFilter || stateFilter || countryFilter) && (
                 <button className="btn btn-ghost btn-sm" onClick={clearFilters} style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--danger)', marginTop: '2px' }}>
                   <X size={14} /> Clear Filters
                 </button>
