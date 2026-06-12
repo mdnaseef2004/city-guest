@@ -403,6 +403,14 @@ export async function createAssignment({ guest_name, notes, assigned_to, due_dat
     type: is_urgent ? 'urgent' : 'info'
   });
 
+  // Create persistent notification for Super Admin (receipt)
+  await createNotification({
+    userId: user.id,
+    title: 'Assignment Sent',
+    message: `You assigned ${guest_name.trim()} to a Sub Admin.`,
+    type: 'info'
+  });
+
   return data;
 }
 
