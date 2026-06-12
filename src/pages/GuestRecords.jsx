@@ -169,6 +169,7 @@ const GuestRecords = () => {
         'Phone Number': r.phone_number || '',
         'Purpose': r.purpose,
         'Donation (₹)': r.donation_amount || 0,
+        'Picked Date': r.picked_date || '',
         'Picked From': r.picked_from || '',
         'Picked Time': r.picked_time || '',
         'Returned': r.guest_returned,
@@ -207,7 +208,7 @@ const GuestRecords = () => {
       place: r.place || '', state: r.state || '', country: r.country || '',
       is_international: r.is_international || false,
       purpose: r.purpose || '', donation_amount: r.donation_amount || '',
-      picked_from: r.picked_from || '', picked_time: r.picked_time || '',
+      picked_date: r.picked_date || '', picked_from: r.picked_from || '', picked_time: r.picked_time || '',
       handled_by: r.handled_by || '', remarks: r.remarks || '',
       guest_returned: r.guest_returned || '', return_date: r.return_date || '', return_time: r.return_time || '',
       visited_places: r.visited_places?.length ? [...r.visited_places] : []
@@ -384,6 +385,7 @@ Markaz Knowledge City`;
                   <th>State / Country</th>
                   <th>Purpose</th>
                   <th>Donation</th>
+                  <th>Picked Date</th>
                   <th>Phone</th>
                   <th>Returned</th>
                   <th>Date</th>
@@ -406,6 +408,7 @@ Markaz Knowledge City`;
                     <td>{r.is_international ? (r.country || '—') : (r.state || '—')}</td>
                     <td>{r.purpose}</td>
                     <td>₹{Number(r.donation_amount || 0).toLocaleString('en-IN')}</td>
+                    <td>{r.picked_date ? new Date(r.picked_date).toLocaleDateString('en-IN') : '—'}</td>
                     <td>{r.phone_number || '—'}</td>
                     <td>
                       <span style={{
@@ -518,7 +521,7 @@ Markaz Knowledge City`;
             </div>
           )}
 
-          {[['purpose', 'Purpose', 'text'], ['donation_amount', 'Donation (₹)', 'number'], ['phone_number', 'Phone', 'tel'], ['picked_from', 'Picked From', 'text'], ['picked_time', 'Picked Time', 'time'], ['handled_by', 'Handled By', 'text']].map(([k, lbl, type]) => (
+          {[['purpose', 'Purpose', 'text'], ['donation_amount', 'Donation (₹)', 'number'], ['phone_number', 'Phone', 'tel'], ['picked_date', 'Picked Date', 'date'], ['picked_from', 'Picked From', 'text'], ['picked_time', 'Picked Time', 'time'], ['handled_by', 'Handled By', 'text']].map(([k, lbl, type]) => (
             <div className="form-group" key={k}>
               <label className="form-label">{lbl}</label>
               <input type={type} className="form-input no-icon" value={editForm[k]}

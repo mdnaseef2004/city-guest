@@ -61,8 +61,9 @@ export const generateGuestVisitPDF = async (guestData) => {
     startY: currentY,
     body: [
       ['Guest Name:', guestData.guest_name, 'Picked From:', guestData.picked_from || '—'],
-      ['Phone Number:', guestData.phone_number || guestData.mobile_number, 'Picked Time:', guestData.picked_time || '—'],
-      ['Address:', guestData.place, 'Donation:', guestData.donation_amount ? `Rs. ${Number(guestData.donation_amount).toLocaleString('en-IN')}` : '—'],
+      ['Phone Number:', guestData.phone_number || guestData.mobile_number, 'Picked Date:', guestData.picked_date ? new Date(guestData.picked_date).toLocaleDateString('en-IN') : '—'],
+      ['Address:', guestData.place, 'Picked Time:', guestData.picked_time || '—'],
+      ['State/Country:', guestData.is_international ? guestData.country : guestData.state, 'Donation:', guestData.donation_amount ? `Rs. ${Number(guestData.donation_amount).toLocaleString('en-IN')}` : '—'],
     ],
     theme: 'plain',
     styles: { cellPadding: 2, fontSize: 10, textColor: 0 },

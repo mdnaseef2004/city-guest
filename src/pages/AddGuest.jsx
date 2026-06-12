@@ -44,8 +44,8 @@ const COUNTRIES = [
 
 const EMPTY_VISIT = { visited_place: '', visit_date: '', time_in: '', time_out: '' };
 const EMPTY = { 
-  guest_name: '', mobile_number: '', place: '', state: '', country: '', is_international: false, purpose: '', donation_amount: '', 
-  picked_from: '', picked_time: '', handled_by: '', visits: [], guest_returned: '', return_date: '', return_time: '', remarks: '' 
+  guest_name: '', mobile_number: '', place: '', state: '', country: '', is_international: false, purpose: '', donation_amount: '',
+  picked_from: '', picked_date: '', picked_time: '', handled_by: '', visits: [], guest_returned: '', return_date: '', return_time: '', remarks: '' 
 };
 
 const AddGuest = () => {
@@ -88,6 +88,7 @@ const AddGuest = () => {
         purpose: form.purpose.trim(),
         donation_amount: form.donation_amount,
         picked_from: form.picked_from.trim(),
+        picked_date: form.picked_date || null,
         picked_time: form.picked_time,
         handled_by: form.handled_by.trim(),
         visits: form.visits,
@@ -252,6 +253,12 @@ const AddGuest = () => {
                   <input id="donation" type="number" className="form-input" placeholder="0" min="0" step="1"
                     value={form.donation_amount} onChange={set('donation_amount')} disabled={loading} />
                 </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="picked_date">Picked Date</label>
+                <input id="picked_date" type="date" className="form-input no-icon"
+                  value={form.picked_date} onChange={set('picked_date')} disabled={loading} />
               </div>
 
               <div className="form-group">
