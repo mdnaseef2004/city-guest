@@ -6,9 +6,18 @@ import { useAuth } from '../contexts/AuthContext';
 import { addGuest, checkDuplicateGuest, getUniquePlaces, getUniquePurposes, uploadGuestPDF } from '../lib/supabaseDB';
 import { generateGuestVisitPDF } from '../lib/pdfGenerator';
 
+const INDIAN_STATES = [
+  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana",
+  "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur",
+  "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana",
+  "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal",
+  "Andaman and Nicobar Islands", "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu",
+  "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
+];
+
 const EMPTY_VISIT = { visited_place: '', visit_date: '', time_in: '', time_out: '' };
 const EMPTY = { 
-  guest_name: '', mobile_number: '', place: '', purpose: '', donation_amount: '', 
+  guest_name: '', mobile_number: '', place: '', state: '', purpose: '', donation_amount: '', 
   picked_from: '', picked_time: '', handled_by: '', visits: [], guest_returned: '', return_date: '', return_time: '', remarks: '' 
 };
 
@@ -46,6 +55,7 @@ const AddGuest = () => {
         guest_name: form.guest_name.trim(),
         phone_number: form.mobile_number.trim(), // API expects phone_number now
         place: form.place.trim(),
+        state: form.state,
         purpose: form.purpose.trim(),
         donation_amount: form.donation_amount,
         picked_from: form.picked_from.trim(),
@@ -79,7 +89,7 @@ const AddGuest = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.guest_name.trim() || !form.mobile_number.trim() || !form.place.trim() || !form.purpose.trim() || !form.guest_returned) {
+    if (!form.guest_name.trim() || !form.mobile_number.trim() || !form.place.trim() || !form.state || !form.purpose.trim() || !form.guest_returned) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -140,6 +150,19 @@ const AddGuest = () => {
                   <input id="place" type="text" className="form-input" placeholder="Full address"
                     value={form.place} onChange={set('place')} list="places-list" required disabled={loading} />
                   <datalist id="places-list">{places.map(p => <option key={p} value={p} />)}</datalist>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="state">State <span className="required">*</span></label>
+                <div className="input-wrap">
+                  <span className="input-icon"><Map size={16} /></span>
+                  <select id="state" className="form-input" value={form.state} onChange={set('state')} required disabled={loading}>
+                    <option value="" disabled>Select State</option>
+                    {INDIAN_STATES.map(st => (
+                      <option key={st} value={st}>{st}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 

@@ -181,7 +181,7 @@ const Reports = () => {
                 <input type="date" className="form-input no-icon" value={dailyDate} onChange={e => setDailyDate(e.target.value)} style={{ width: 'auto' }} />
               </div>
               <div style={{ marginTop: 'auto' }}>
-                <ExportButtons getData={() => dailyRows.map(r => ({ 'Guest Name': r.guest_name, Phone: r.phone_number || '', Address: r.place, Purpose: r.purpose, 'Donation (₹)': r.donation_amount, 'Picked From': r.picked_from, 'Handled By': r.handled_by, 'Returned': r.guest_returned, 'Entered By': r.profiles?.name, Time: new Date(r.created_at).toLocaleTimeString('en-IN') }))} filename={`daily-report-${dailyDate}`} />
+                <ExportButtons getData={() => dailyRows.map(r => ({ 'Guest Name': r.guest_name, Phone: r.phone_number || '', Address: r.place, State: r.state || '', Purpose: r.purpose, 'Donation (₹)': r.donation_amount, 'Picked From': r.picked_from, 'Handled By': r.handled_by, 'Returned': r.guest_returned, 'Entered By': r.profiles?.name, Time: new Date(r.created_at).toLocaleTimeString('en-IN') }))} filename={`daily-report-${dailyDate}`} />
               </div>
             </div>
           </div>
@@ -233,7 +233,7 @@ const Reports = () => {
         <div>
           <div className="card mb-4"><div className="card-body" style={{ display: 'flex', alignItems: 'flex-end', gap: '16px', flexWrap: 'wrap' }}>
             <DateRangePicker startDate={donStart} endDate={donEnd} onStartDateChange={setDonStart} onEndDateChange={setDonEnd} label="Date Range" />
-            <ExportButtons getData={() => donRows.map(r => ({ 'Guest Name': r.guest_name, Address: r.place, 'Donation (₹)': r.donation_amount, Date: r.created_at.slice(0, 10), 'Entered By': r.profiles?.name }))} filename="donation-report" />
+            <ExportButtons getData={() => donRows.map(r => ({ 'Guest Name': r.guest_name, Address: r.place, State: r.state || '', 'Donation (₹)': r.donation_amount, Date: r.created_at.slice(0, 10), 'Entered By': r.profiles?.name }))} filename="donation-report" />
           </div></div>
           <div className="stats-grid mb-4">
             <div className="card"><div className="card-body"><div className="text-muted">Total Donations</div><div style={{ fontSize: '2rem', fontWeight: 700 }}>₹{fmt(donTotal)}</div></div></div>

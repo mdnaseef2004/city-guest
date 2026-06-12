@@ -8,10 +8,21 @@ import { supabase } from '../lib/supabase';
 import { getGuests, getUsers, getUniquePlaces, getUniquePurposes, updateGuest, deleteGuest } from '../lib/supabaseDB';
 
 const PER_PAGE = 20;
-const EMPTY_VISIT = { visited_place: '', visit_date: '', time_in: '', time_out: '' };
+
+const INDIAN_STATES = [
+  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana",
+  "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur",
+  "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana",
+  "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal",
+  "Andaman and Nicobar Islands", "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu",
+  "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
+];
+
+const EMPTY_VISIT = { id: null, visited_place: '', visit_date: '', time_in: '', time_out: '' };
 const EMPTY_FORM = { 
-  guest_name: '', place: '', purpose: '', donation_amount: '', phone_number: '', 
-  picked_from: '', picked_time: '', handled_by: '', visited_places: [], guest_returned: '', return_date: '', return_time: '', remarks: '' 
+  id: null, guest_name: '', phone_number: '', place: '', state: '', purpose: '', 
+  donation_amount: '', picked_from: '', picked_time: '', handled_by: '', remarks: '',
+  guest_returned: '', return_date: '', return_time: '', visited_places: []
 };
 
 const GuestRecords = () => {
@@ -82,13 +93,13 @@ const GuestRecords = () => {
 
   const openEdit = (r) => {
     setSelected(r);
-    setEditForm({ 
-      guest_name: r.guest_name, place: r.place, purpose: r.purpose, 
-      donation_amount: r.donation_amount, phone_number: r.phone_number || '', 
-      picked_from: r.picked_from || '', picked_time: r.picked_time || '', handled_by: r.handled_by || '',
-      visited_places: (r.visited_places || []).map(v => ({ visited_place: v.visited_place, visit_date: v.visit_date || '', time_in: v.time_in, time_out: v.time_out })), 
+    setEditForm({
+      id: r.id, guest_name: r.guest_name || '', phone_number: r.phone_number || '',
+      place: r.place || '', state: r.state || '', purpose: r.purpose || '', donation_amount: r.donation_amount || '',
+      picked_from: r.picked_from || '', picked_time: r.picked_time || '',
+      handled_by: r.handled_by || '', remarks: r.remarks || '',
       guest_returned: r.guest_returned || '', return_date: r.return_date || '', return_time: r.return_time || '',
-      remarks: r.remarks || '' 
+      visited_places: r.visited_places?.length ? [...r.visited_places] : []
     });
     setEditModal(true);
   };
@@ -210,7 +221,7 @@ Markaz Knowledge City`;
             <table className="table">
               <thead>
                 <tr>
-                  <th>Guest Name</th><th>Address</th><th>Purpose</th>
+                  <th>Guest Name</th><th>Address</th><th>State</th><th>Purpose</th>
                   <th>Donation</th><th>Phone</th><th>Returned</th><th>Date</th>
                   <th>Entered By</th><th>Actions</th>
                 </tr>
@@ -220,6 +231,7 @@ Markaz Knowledge City`;
                   <tr key={r.id}>
                     <td><strong>{r.guest_name}</strong></td>
                     <td>{r.place}</td>
+                    <td>{r.state || '—'}</td>
                     <td>{r.purpose}</td>
                     <td>₹{Number(r.donation_amount || 0).toLocaleString('en-IN')}</td>
                     <td>{r.phone_number || '—'}</td>
@@ -277,7 +289,27 @@ Markaz Knowledge City`;
         <div className="form-grid" style={{ gap: '12px', maxHeight: '70vh', overflowY: 'auto', paddingRight: '8px' }}>
           
           <h4 style={{ gridColumn: '1 / -1', color: 'var(--primary)', margin: 0, marginTop: '8px' }}>Basic Details</h4>
-          {[['guest_name', 'Guest Name', 'text'], ['place', 'Address', 'text'], ['purpose', 'Purpose', 'text'], ['donation_amount', 'Donation (₹)', 'number'], ['phone_number', 'Phone', 'tel'], ['picked_from', 'Picked From', 'text'], ['picked_time', 'Picked Time', 'time'], ['handled_by', 'Handled By', 'text']].map(([k, lbl, type]) => (
+          <div className="form-group">
+            <label className="form-label">Guest Name</label>
+            <input type="text" className="form-input no-icon" value={editForm.guest_name}
+              onChange={e => setEditForm(f => ({ ...f, guest_name: e.target.value }))} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Address</label>
+            <input type="text" className="form-input no-icon" value={editForm.place}
+              onChange={e => setEditForm(f => ({ ...f, place: e.target.value }))} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">State</label>
+            <select className="form-input no-icon" value={editForm.state}
+              onChange={e => setEditForm(f => ({ ...f, state: e.target.value }))}>
+              <option value="">Select State</option>
+              {INDIAN_STATES.map(st => (
+                <option key={st} value={st}>{st}</option>
+              ))}
+            </select>
+          </div>
+          {[['purpose', 'Purpose', 'text'], ['donation_amount', 'Donation (₹)', 'number'], ['phone_number', 'Phone', 'tel'], ['picked_from', 'Picked From', 'text'], ['picked_time', 'Picked Time', 'time'], ['handled_by', 'Handled By', 'text']].map(([k, lbl, type]) => (
             <div className="form-group" key={k}>
               <label className="form-label">{lbl}</label>
               <input type={type} className="form-input no-icon" value={editForm[k]}
