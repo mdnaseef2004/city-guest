@@ -190,7 +190,32 @@ const GuestRecords = () => {
         'Date Entered': new Date(r.created_at).toLocaleString('en-IN')
       }));
 
-      const filename = `Guest_Records_${new Date().toISOString().slice(0, 10)}`;
+      let reportTitle = "All Guest Report";
+      
+      if (startDate && endDate) {
+        const sd = new Date(startDate);
+        const ed = new Date(endDate);
+        const isFullMonth = sd.getMonth() === ed.getMonth() && sd.getFullYear() === ed.getFullYear() && sd.getDate() === 1 && new Date(ed.getFullYear(), ed.getMonth() + 1, 0).getDate() === ed.getDate();
+        
+        if (isFullMonth) {
+          reportTitle = `${sd.toLocaleString('en-US', { month: 'long', year: 'numeric' })} Guest Report`;
+        } else if (startDate === endDate) {
+          reportTitle = `Guest Report for ${sd.toLocaleDateString('en-IN')}`;
+        } else {
+          reportTitle = `Guest Report (${sd.toLocaleDateString('en-IN')} to ${ed.toLocaleDateString('en-IN')})`;
+        }
+      } else if (startDate) {
+        reportTitle = `Guest Report (From ${new Date(startDate).toLocaleDateString('en-IN')})`;
+      } else if (endDate) {
+        reportTitle = `Guest Report (Until ${new Date(endDate).toLocaleDateString('en-IN')})`;
+      }
+
+      const locations = [stateFilter, countryFilter, placeFilter].filter(Boolean);
+      if (locations.length > 0) {
+        reportTitle += ` - ${locations.join(', ')}`;
+      }
+
+      const filename = `${reportTitle.replace(/[^a-z0-9]/gi, '_').replace(/_+/g, '_')}_${new Date().toISOString().slice(0, 10)}`;
 
       if (format === 'pdf') {
         const doc = new jsPDF('l', 'pt', 'a4'); // Landscape for many columns
@@ -222,7 +247,7 @@ const GuestRecords = () => {
           }
           doc.setFontSize(14);
           doc.setFont('helvetica', 'bold');
-          doc.text('GUEST RECORDS', PAGE_WIDTH / 2, titleY, { align: 'center' });
+          doc.text(reportTitle.toUpperCase(), PAGE_WIDTH / 2, titleY, { align: 'center' });
           
           // Divider
           doc.setDrawColor(200, 200, 200);
