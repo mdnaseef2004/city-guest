@@ -124,6 +124,10 @@ const Reports = () => {
   const [monthVal, setMonthVal] = useState(thisMonth());
   const [monthRows, setMonthRows] = useState([]);
 
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
+  const [customRows, setCustomRows] = useState([]);
+
   const [donStart, setDonStart] = useState('');
   const [donEnd, setDonEnd] = useState('');
   const [donRows, setDonRows] = useState([]);
@@ -157,6 +161,13 @@ const Reports = () => {
     getAllGuestsForReports({ startDate: `${monthVal}-01`, endDate: `${monthVal}-${lastDay}` })
       .then(setMonthRows).catch(console.error).finally(() => setLoading(false));
   }, [tab, monthVal]);
+
+  useEffect(() => {
+    if (tab !== 'custom') return;
+    setLoading(true);
+    getAllGuestsForReports({ startDate: customStart, endDate: customEnd })
+      .then(setCustomRows).catch(console.error).finally(() => setLoading(false));
+  }, [tab, customStart, customEnd]);
 
   useEffect(() => {
     if (tab !== 'donation') return;
@@ -193,6 +204,7 @@ const Reports = () => {
   const tabs = [
     { id: 'daily', label: 'Daily' },
     { id: 'monthly', label: 'Monthly' },
+    { id: 'custom', label: 'Custom Range' },
     { id: 'donation', label: 'Donation' },
     ...(profile?.role === 'super_admin' ? [
       { id: 'subadmin', label: 'Sub Admin' },
@@ -252,6 +264,21 @@ const Reports = () => {
             <div className="card"><div className="card-body"><div className="text-muted">Total Donations</div><div style={{ fontSize: '2rem', fontWeight: 700 }}>₹{fmt(monthRows.reduce((s, r) => s + (r.donation_amount || 0), 0))}</div></div></div>
           </div>
           <DetailedTable rows={monthRows} />
+        </div>
+      )}
+
+      {/* Custom Range */}
+      {tab === 'custom' && !loading && (
+        <div>
+          <div className="card mb-4"><div className="card-body" style={{ display: 'flex', alignItems: 'flex-end', gap: '16px', flexWrap: 'wrap' }}>
+            <DateRangePicker startDate={customStart} endDate={customEnd} onStartDateChange={setCustomStart} onEndDateChange={setCustomEnd} label="Date Range" />
+            <ExportButtons getData={() => mapExportData(customRows)} filename="Custom_Report" title="Custom Date Range Guest Report" />
+          </div></div>
+          <div className="stats-grid mb-4">
+            <div className="card"><div className="card-body"><div className="text-muted">Total Guests</div><div style={{ fontSize: '2rem', fontWeight: 700 }}>{customRows.length}</div></div></div>
+            <div className="card"><div className="card-body"><div className="text-muted">Total Donations</div><div style={{ fontSize: '2rem', fontWeight: 700 }}>₹{fmt(customRows.reduce((s, r) => s + (r.donation_amount || 0), 0))}</div></div></div>
+          </div>
+          <DetailedTable rows={customRows} />
         </div>
       )}
 
