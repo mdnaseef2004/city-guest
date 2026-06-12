@@ -481,6 +481,7 @@ Markaz Knowledge City`;
                   <th>Phone</th>
                   <th>Returned</th>
                   <th>Date</th>
+                  <th>Handled By</th>
                   <th>Entered By</th>
                   <th>Actions</th>
                 </tr>
@@ -512,6 +513,7 @@ Markaz Knowledge City`;
                       </span>
                     </td>
                     <td>{new Date(r.created_at).toLocaleDateString('en-IN')}</td>
+                    <td>{r.handled_by || '—'}</td>
                     <td>{r.profiles?.name || '—'}</td>
                     <td>
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'nowrap' }}>
