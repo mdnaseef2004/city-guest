@@ -120,7 +120,8 @@ const AddGuest = () => {
     e.preventDefault();
     const locationValid = form.is_international ? !!form.country : !!form.state;
     const districtValid = form.is_international || !!form.district.trim();
-    if (!form.guest_name.trim() || !form.mobile_number.trim() || !form.place.trim() || !districtValid || !locationValid || !form.purpose.trim() || !form.handled_by.trim()) {
+    const phoneValid = form.is_international || !!form.mobile_number.trim();
+    if (!form.guest_name.trim() || !phoneValid || !form.place.trim() || !districtValid || !locationValid || !form.purpose.trim() || !form.handled_by.trim()) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -166,11 +167,11 @@ const AddGuest = () => {
               </div>
 
               <div className="form-group">
-                <label className="form-label" htmlFor="mobile">Phone Number <span className="required">*</span></label>
+                <label className="form-label" htmlFor="mobile">Phone Number {!form.is_international && <span className="required">*</span>}</label>
                 <div className="input-wrap">
                   <span className="input-icon"><Phone size={16} /></span>
                   <input id="mobile" type="tel" className="form-input" placeholder="Phone number"
-                    value={form.mobile_number} onChange={set('mobile_number')} required disabled={loading} />
+                    value={form.mobile_number} onChange={set('mobile_number')} required={!form.is_international} disabled={loading} />
                 </div>
               </div>
 

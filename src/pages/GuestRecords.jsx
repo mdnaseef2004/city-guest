@@ -332,6 +332,10 @@ const GuestRecords = () => {
       toast.error('Handled By is required');
       return;
     }
+    if (!editForm.is_international && !editForm.phone_number.trim()) {
+      toast.error('Phone number is required for domestic guests');
+      return;
+    }
     try {
       const { visited_places, donation_amount, ...updates } = editForm;
       updates.donation_amount = Number(donation_amount) || 0;
@@ -647,11 +651,12 @@ Markaz Knowledge City`;
             </div>
           )}
 
-          {[['purpose', 'Purpose', 'text', true], ['donation_amount', 'Donation (₹)', 'number', false], ['phone_number', 'Phone', 'tel', true], ['picked_date', 'Picked Date', 'date', false], ['picked_from', 'Picked From', 'text', false], ['picked_time', 'Picked Time', 'time', false], ['handled_by', 'Handled By', 'text', true]].map(([k, lbl, type, req]) => (
+          {[['purpose', 'Purpose', 'text', true], ['donation_amount', 'Donation (₹)', 'number', false], ['phone_number', 'Phone', 'tel', 'phone_conditional'], ['picked_date', 'Picked Date', 'date', false], ['picked_from', 'Picked From', 'text', false], ['picked_time', 'Picked Time', 'time', false], ['handled_by', 'Handled By', 'text', true]].map(([k, lbl, type, req]) => (
             <div className="form-group" key={k}>
-              <label className="form-label">{lbl} {req && <span className="required">*</span>}</label>
+              <label className="form-label">{lbl} {req === 'phone_conditional' ? (!editForm.is_international && <span className="required">*</span>) : (req && <span className="required">*</span>)}</label>
               <input type={type} className="form-input no-icon" value={editForm[k]}
-                onChange={e => setEditForm(f => ({ ...f, [k]: e.target.value }))} min={type === 'number' ? 0 : undefined} />
+                onChange={e => setEditForm(f => ({ ...f, [k]: e.target.value }))} min={type === 'number' ? 0 : undefined}
+                required={req === 'phone_conditional' ? !editForm.is_international : req} />
             </div>
           ))}
           
