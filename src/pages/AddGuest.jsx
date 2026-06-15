@@ -106,8 +106,7 @@ const AddGuest = () => {
 
       toast.success('Guest entry saved successfully!');
       setForm(EMPTY);
-      const [p, pu] = await Promise.all([getUniquePlaces(), getUniquePurposes()]);
-      setPlaces(p);
+      const pu = await getUniquePurposes();
       setPurposes(pu);
     } catch (err) {
       toast.dismiss('pdf-gen');
