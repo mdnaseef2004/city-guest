@@ -5,6 +5,7 @@ import Modal from '../components/Modal';
 import { useAuth } from '../contexts/AuthContext';
 import { addGuest, checkDuplicateGuest, getUniquePlaces, getUniquePurposes, uploadGuestPDF } from '../lib/supabaseDB';
 import { generateGuestVisitPDF } from '../lib/pdfGenerator';
+import { INDIAN_DISTRICTS } from '../lib/districts';
 
 const INDIAN_STATES = [
   "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana",
@@ -121,7 +122,8 @@ const AddGuest = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const locationValid = form.is_international ? !!form.country : !!form.state;
-    if (!form.guest_name.trim() || !form.mobile_number.trim() || !form.place.trim() || !form.district.trim() || !locationValid || !form.purpose.trim() || !form.handled_by.trim()) {
+    const districtValid = form.is_international || !!form.district.trim();
+    if (!form.guest_name.trim() || !form.mobile_number.trim() || !form.place.trim() || !districtValid || !locationValid || !form.purpose.trim() || !form.handled_by.trim()) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -185,14 +187,20 @@ const AddGuest = () => {
                 </div>
               </div>
 
-              <div className="form-group">
-                <label className="form-label" htmlFor="district">District <span className="required">*</span></label>
-                <div className="input-wrap">
-                  <span className="input-icon"><Map size={16} /></span>
-                  <input id="district" type="text" className="form-input" placeholder="District"
-                    value={form.district} onChange={set('district')} required disabled={loading} />
+              {!form.is_international && (
+                <div className="form-group">
+                  <label className="form-label" htmlFor="district">District <span className="required">*</span></label>
+                  <div className="input-wrap">
+                    <span className="input-icon"><Map size={16} /></span>
+                    <select id="district" className="form-input" value={form.district} onChange={set('district')} required disabled={loading}>
+                      <option value="" disabled>Select District</option>
+                      {INDIAN_DISTRICTS.map(d => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* International Guest Checkbox */}
               <div className="form-group" style={{ gridColumn: '1 / -1' }}>
