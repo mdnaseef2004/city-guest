@@ -3,7 +3,7 @@ import { User, MapPin, Target, IndianRupee, Phone, MessageSquare, Clock, UserCir
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import { useAuth } from '../contexts/AuthContext';
-import { addGuest, checkDuplicateGuest, getUniquePlaces, getUniquePurposes, uploadGuestPDF } from '../lib/supabaseDB';
+import { addGuest, checkDuplicateGuest, getUniquePurposes, uploadGuestPDF } from '../lib/supabaseDB';
 import { generateGuestVisitPDF } from '../lib/pdfGenerator';
 import { INDIAN_DISTRICTS } from '../lib/districts';
 
@@ -54,12 +54,10 @@ const AddGuest = () => {
   const [form, setForm] = useState(EMPTY);
   const [loading, setLoading] = useState(false);
   const [now, setNow] = useState(new Date());
-  const [places, setPlaces] = useState([]);
   const [purposes, setPurposes] = useState([]);
   const [dupModal, setDupModal] = useState(false);
 
   useEffect(() => {
-    getUniquePlaces().then(setPlaces);
     getUniquePurposes().then(setPurposes);
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
@@ -182,8 +180,7 @@ const AddGuest = () => {
                 <div className="input-wrap">
                   <span className="input-icon"><MapPin size={16} /></span>
                   <input id="place" type="text" className="form-input" placeholder="Full address"
-                    value={form.place} onChange={set('place')} list="places-list" required disabled={loading} />
-                  <datalist id="places-list">{places.map(p => <option key={p} value={p} />)}</datalist>
+                    value={form.place} onChange={set('place')} required disabled={loading} />
                 </div>
               </div>
 
