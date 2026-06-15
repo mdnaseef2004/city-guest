@@ -5,7 +5,7 @@ import Modal from '../components/Modal';
 import DateRangePicker from '../components/DateRangePicker';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { getGuests, getUsers, getUniquePlaces, getUniquePurposes, updateGuest, deleteGuest } from '../lib/supabaseDB';
+import { getGuests, getUsers, getUniquePlaces, getUniqueDistricts, getUniquePurposes, updateGuest, deleteGuest } from '../lib/supabaseDB';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -91,12 +91,14 @@ const GuestRecords = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [placeFilter, setPlaceFilter] = useState('');
+  const [districtFilter, setDistrictFilter] = useState('');
   const [purposeFilter, setPurposeFilter] = useState('');
   const [adminFilter, setAdminFilter] = useState('');
   const [stateFilter, setStateFilter] = useState('');
   const [countryFilter, setCountryFilter] = useState('');
 
   const [places, setPlaces] = useState([]);
+  const [districts, setDistricts] = useState([]);
   const [purposes, setPurposes] = useState([]);
   const [users, setUsers] = useState([]);
 
@@ -114,7 +116,7 @@ const GuestRecords = () => {
         search,
         startDate: startDate ? startDate + 'T00:00:00.000Z' : '',
         endDate: endDate ? endDate + 'T23:59:59.999Z' : '',
-        place: placeFilter, purpose: purposeFilter,
+        place: placeFilter, districtFilter, purpose: purposeFilter,
         createdBy: adminFilter, stateFilter, countryFilter, page, perPage: PER_PAGE,
       });
       setRecords(data);
@@ -124,7 +126,7 @@ const GuestRecords = () => {
     } finally {
       setLoading(false);
     }
-  }, [search, startDate, endDate, placeFilter, purposeFilter, adminFilter, stateFilter, countryFilter, page]);
+  }, [search, startDate, endDate, placeFilter, districtFilter, purposeFilter, adminFilter, stateFilter, countryFilter, page]);
 
   // Keep ref always pointing to latest fetchRecords
   useEffect(() => { fetchRecordsRef.current = fetchRecords; }, [fetchRecords]);
@@ -145,13 +147,14 @@ const GuestRecords = () => {
 
   useEffect(() => {
     getUniquePlaces().then(setPlaces);
+    getUniqueDistricts().then(setDistricts);
     getUniquePurposes().then(setPurposes);
     if (profile?.role === 'super_admin') getUsers().then(setUsers);
   }, [profile]);
 
   const clearFilters = () => {
     setSearch(''); setStartDate(''); setEndDate('');
-    setPlaceFilter(''); setPurposeFilter(''); setAdminFilter('');
+    setPlaceFilter(''); setDistrictFilter(''); setPurposeFilter(''); setAdminFilter('');
     setStateFilter(''); setCountryFilter(''); setPage(1);
   };
 
@@ -163,7 +166,7 @@ const GuestRecords = () => {
         search,
         startDate: startDate ? startDate + 'T00:00:00.000Z' : '',
         endDate: endDate ? endDate + 'T23:59:59.999Z' : '',
-        place: placeFilter, purpose: purposeFilter,
+        place: placeFilter, districtFilter, purpose: purposeFilter,
         createdBy: adminFilter, stateFilter, countryFilter, page: 1, perPage: 100000,
       });
 
@@ -175,6 +178,7 @@ const GuestRecords = () => {
       const rows = data.map(r => ({
         'Guest Name': r.guest_name,
         'Address': r.place,
+        'District': r.district || '',
         'State': r.state || '',
         'Country': r.country || '',
         'Phone Number': r.phone_number || '',
@@ -191,7 +195,15 @@ const GuestRecords = () => {
         'Date Entered': new Date(r.created_at).toLocaleString('en-IN')
       }));
 
-      let reportTitle = "All Guest Report";
+      let baseTitle = "All Guest Report";
+      if (adminFilter) {
+        const selectedAdminName = users.find(u => u.id === adminFilter)?.name;
+        if (selectedAdminName) {
+          baseTitle = `Report of ${selectedAdminName}`;
+        }
+      }
+
+      let reportTitle = baseTitle;
       
       if (startDate && endDate) {
         const sd = new Date(startDate);
@@ -199,19 +211,19 @@ const GuestRecords = () => {
         const isFullMonth = sd.getMonth() === ed.getMonth() && sd.getFullYear() === ed.getFullYear() && sd.getDate() === 1 && new Date(ed.getFullYear(), ed.getMonth() + 1, 0).getDate() === ed.getDate();
         
         if (isFullMonth) {
-          reportTitle = `${sd.toLocaleString('en-US', { month: 'long', year: 'numeric' }).toUpperCase()} GUEST REPORT`;
+          reportTitle = `${sd.toLocaleString('en-US', { month: 'long', year: 'numeric' })} ${baseTitle}`;
         } else if (sd.getTime() === ed.getTime()) {
-          reportTitle = `Guest Report for ${formatDate(startDate)}`;
+          reportTitle = `${baseTitle} for ${formatDate(startDate)}`;
         } else {
-          reportTitle = `Guest Report (${formatDate(startDate)} to ${formatDate(endDate)})`;
+          reportTitle = `${baseTitle} (${formatDate(startDate)} to ${formatDate(endDate)})`;
         }
       } else if (startDate) {
-        reportTitle = `Guest Report (From ${formatDate(startDate)})`;
+        reportTitle = `${baseTitle} (From ${formatDate(startDate)})`;
       } else if (endDate) {
-        reportTitle = `Guest Report (Until ${formatDate(endDate)})`;
+        reportTitle = `${baseTitle} (Until ${formatDate(endDate)})`;
       }
 
-      const locations = [stateFilter, countryFilter, placeFilter].filter(Boolean);
+      const locations = [stateFilter, countryFilter, districtFilter, placeFilter].filter(Boolean);
       if (locations.length > 0) {
         reportTitle += ` - ${locations.join(', ')}`;
       }
@@ -294,7 +306,7 @@ const GuestRecords = () => {
     setSelected(r);
     setEditForm({
       id: r.id, guest_name: r.guest_name || '', phone_number: r.phone_number || '',
-      place: r.place || '', state: r.state || '', country: r.country || '',
+      place: r.place || '', district: r.district || '', state: r.state || '', country: r.country || '',
       is_international: r.is_international || false,
       purpose: r.purpose || '', donation_amount: r.donation_amount || '',
       picked_date: r.picked_date || '', picked_from: r.picked_from || '', picked_time: r.picked_time || '',
@@ -316,6 +328,10 @@ const GuestRecords = () => {
   const removeVisit = (index) => setEditForm(f => ({ ...f, visited_places: f.visited_places.filter((_, i) => i !== index) }));
 
   const handleEdit = async () => {
+    if (!editForm.handled_by.trim()) {
+      toast.error('Handled By is required');
+      return;
+    }
     try {
       const { visited_places, donation_amount, ...updates } = editForm;
       updates.donation_amount = Number(donation_amount) || 0;
@@ -409,6 +425,14 @@ Markaz Knowledge City`;
               {places.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
 
+            {/* District */}
+            <select className="form-input no-icon" value={districtFilter}
+              onChange={e => { setDistrictFilter(e.target.value); setPage(1); }}
+              style={{ flex: '1 1 140px', minWidth: 120, borderRadius: 10, cursor: 'pointer' }}>
+              <option value="">All Districts</option>
+              {districts.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+
             {/* State */}
             <select className="form-input no-icon" value={stateFilter}
               onChange={e => { setStateFilter(e.target.value); setPage(1); }}
@@ -450,7 +474,7 @@ Markaz Knowledge City`;
               startDate={startDate} endDate={endDate}
               onStartDateChange={v => { setStartDate(v); setPage(1); }}
               onEndDateChange={v => { setEndDate(v); setPage(1); }} />
-            {(search || startDate || endDate || placeFilter || purposeFilter || adminFilter || stateFilter || countryFilter) && (
+            {(search || startDate || endDate || placeFilter || districtFilter || purposeFilter || adminFilter || stateFilter || countryFilter) && (
               <button className="btn btn-ghost btn-sm" onClick={clearFilters}
                 style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--danger)' }}>
                 <X size={14} /> Clear Filters
@@ -475,6 +499,7 @@ Markaz Knowledge City`;
                 <tr>
                   <th>Guest Name</th>
                   <th>Address</th>
+                  <th>District</th>
                   <th>State / Country</th>
                   <th>Purpose</th>
                   <th>Donation</th>
@@ -499,6 +524,7 @@ Markaz Knowledge City`;
                       )}
                     </td>
                     <td>{r.place}</td>
+                    <td>{r.district}</td>
                     <td>{r.is_international ? (r.country || '—') : (r.state || '—')}</td>
                     <td>{r.purpose}</td>
                     <td>₹{Number(r.donation_amount || 0).toLocaleString('en-IN')}</td>
@@ -581,6 +607,11 @@ Markaz Knowledge City`;
             <input type="text" className="form-input no-icon" value={editForm.place}
               onChange={e => setEditForm(f => ({ ...f, place: e.target.value }))} />
           </div>
+          <div className="form-group">
+            <label className="form-label">District</label>
+            <input type="text" className="form-input no-icon" value={editForm.district}
+              onChange={e => setEditForm(f => ({ ...f, district: e.target.value }))} />
+          </div>
 
           {/* International toggle in edit modal */}
           <div className="form-group" style={{ gridColumn: '1 / -1' }}>
@@ -616,9 +647,9 @@ Markaz Knowledge City`;
             </div>
           )}
 
-          {[['purpose', 'Purpose', 'text'], ['donation_amount', 'Donation (₹)', 'number'], ['phone_number', 'Phone', 'tel'], ['picked_date', 'Picked Date', 'date'], ['picked_from', 'Picked From', 'text'], ['picked_time', 'Picked Time', 'time'], ['handled_by', 'Handled By', 'text']].map(([k, lbl, type]) => (
+          {[['purpose', 'Purpose', 'text', true], ['donation_amount', 'Donation (₹)', 'number', false], ['phone_number', 'Phone', 'tel', true], ['picked_date', 'Picked Date', 'date', false], ['picked_from', 'Picked From', 'text', false], ['picked_time', 'Picked Time', 'time', false], ['handled_by', 'Handled By', 'text', true]].map(([k, lbl, type, req]) => (
             <div className="form-group" key={k}>
-              <label className="form-label">{lbl}</label>
+              <label className="form-label">{lbl} {req && <span className="required">*</span>}</label>
               <input type={type} className="form-input no-icon" value={editForm[k]}
                 onChange={e => setEditForm(f => ({ ...f, [k]: e.target.value }))} min={type === 'number' ? 0 : undefined} />
             </div>

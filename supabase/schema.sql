@@ -28,6 +28,7 @@ create table public.guest_visits (
   guest_name text not null,
   phone_number text not null,
   place text not null,
+  district text not null,
   picked_from text,
   guest_returned boolean default false,
   return_time text,

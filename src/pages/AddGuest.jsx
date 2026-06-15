@@ -44,7 +44,7 @@ const COUNTRIES = [
 
 const EMPTY_VISIT = { visited_place: '', visit_date: '', time_in: '', time_out: '' };
 const EMPTY = { 
-  guest_name: '', mobile_number: '', place: '', state: '', country: '', is_international: false, purpose: '', donation_amount: '',
+  guest_name: '', mobile_number: '', place: '', district: '', state: '', country: '', is_international: false, purpose: '', donation_amount: '',
   picked_from: '', picked_date: '', picked_time: '', handled_by: '', visits: [], guest_returned: '', return_date: '', return_time: '', remarks: '' 
 };
 
@@ -82,6 +82,7 @@ const AddGuest = () => {
         guest_name: form.guest_name.trim(),
         phone_number: form.mobile_number.trim(), // API expects phone_number now
         place: form.place.trim(),
+        district: form.district.trim(),
         state: form.is_international ? null : form.state,
         country: form.is_international ? form.country : null,
         is_international: form.is_international,
@@ -120,7 +121,7 @@ const AddGuest = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const locationValid = form.is_international ? !!form.country : !!form.state;
-    if (!form.guest_name.trim() || !form.mobile_number.trim() || !form.place.trim() || !locationValid || !form.purpose.trim() || !form.guest_returned) {
+    if (!form.guest_name.trim() || !form.mobile_number.trim() || !form.place.trim() || !form.district.trim() || !locationValid || !form.purpose.trim() || !form.handled_by.trim()) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -181,6 +182,15 @@ const AddGuest = () => {
                   <input id="place" type="text" className="form-input" placeholder="Full address"
                     value={form.place} onChange={set('place')} list="places-list" required disabled={loading} />
                   <datalist id="places-list">{places.map(p => <option key={p} value={p} />)}</datalist>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="district">District <span className="required">*</span></label>
+                <div className="input-wrap">
+                  <span className="input-icon"><Map size={16} /></span>
+                  <input id="district" type="text" className="form-input" placeholder="District"
+                    value={form.district} onChange={set('district')} required disabled={loading} />
                 </div>
               </div>
 
@@ -277,11 +287,11 @@ const AddGuest = () => {
               </div>
               
               <div className="form-group">
-                <label className="form-label" htmlFor="handled_by">Handled By</label>
+                <label className="form-label" htmlFor="handled_by">Handled By <span className="required">*</span></label>
                 <div className="input-wrap">
                   <span className="input-icon"><Briefcase size={16} /></span>
                   <input id="handled_by" type="text" className="form-input" placeholder="Name of handler"
-                    value={form.handled_by} onChange={set('handled_by')} disabled={loading} />
+                    value={form.handled_by} onChange={set('handled_by')} required disabled={loading} />
                 </div>
               </div>
             </div>
@@ -341,8 +351,8 @@ const AddGuest = () => {
             <h3 style={{ marginBottom: '16px', fontSize: '1.1rem', color: 'var(--primary)' }}>Additional Details</h3>
             <div className="form-grid">
               <div className="form-group">
-                <label className="form-label" htmlFor="guest_returned">Guest Returned <span className="required">*</span></label>
-                <select id="guest_returned" className="form-input no-icon" value={form.guest_returned} onChange={set('guest_returned')} required disabled={loading} style={{ cursor: 'pointer' }}>
+                <label className="form-label" htmlFor="guest_returned">Guest Returned</label>
+                <select id="guest_returned" className="form-input no-icon" value={form.guest_returned} onChange={set('guest_returned')} disabled={loading} style={{ cursor: 'pointer' }}>
                   <option value="">Select option...</option>
                   <option value="Yes">Yes</option>
                   <option value="No">No</option>

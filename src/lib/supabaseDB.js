@@ -158,7 +158,7 @@ export async function uploadAvatar(userId, file) {
 
 // ── Guests ────────────────────────────────────────────────────────────────────
 
-export async function addGuest({ guest_name, phone_number, place, state, country, is_international, purpose, donation_amount, picked_from, picked_date, picked_time, guest_returned, return_date, return_time, handled_by, remarks, visits }) {
+export async function addGuest({ guest_name, phone_number, place, district, state, country, is_international, purpose, donation_amount, picked_from, picked_date, picked_time, guest_returned, return_date, return_time, handled_by, remarks, visits }) {
   const { data: { user } } = await supabase.auth.getUser();
   
   // 1. Insert into guest_visits
@@ -166,6 +166,7 @@ export async function addGuest({ guest_name, phone_number, place, state, country
     guest_name,
     phone_number,
     place,
+    district,
     state,
     country: country || null,
     is_international: is_international || false,
@@ -213,7 +214,7 @@ export async function checkDuplicateGuest(guestName) {
   return data && data.length > 0;
 }
 
-export async function getGuests({ search, startDate, endDate, place, purpose, createdBy, stateFilter, countryFilter, page = 1, perPage = 20 } = {}) {
+export async function getGuests({ search, startDate, endDate, place, districtFilter, purpose, createdBy, stateFilter, countryFilter, page = 1, perPage = 20 } = {}) {
   const { data: { user } } = await supabase.auth.getUser();
   const { data: myProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
 
@@ -226,6 +227,7 @@ export async function getGuests({ search, startDate, endDate, place, purpose, cr
   if (place) query = query.eq('place', place);
   if (purpose) query = query.eq('purpose', purpose);
   if (createdBy) query = query.eq('created_by', createdBy);
+  if (districtFilter) query = query.eq('district', districtFilter);
   if (stateFilter) query = query.eq('state', stateFilter);
   if (countryFilter) query = query.eq('country', countryFilter);
   if (startDate) query = query.gte('created_at', startDate);
@@ -283,6 +285,15 @@ export async function getUniquePlaces() {
   if (myProfile?.role !== 'super_admin') query = query.eq('created_by', user.id);
   const { data } = await query;
   return [...new Set((data || []).map(g => g.place).filter(Boolean))].sort();
+}
+
+export async function getUniqueDistricts() {
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: myProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  let query = supabase.from('guest_visits').select('district');
+  if (myProfile?.role !== 'super_admin') query = query.eq('created_by', user.id);
+  const { data } = await query;
+  return [...new Set((data || []).map(g => g.district).filter(Boolean))].sort();
 }
 
 export async function getUniquePurposes() {
