@@ -192,12 +192,8 @@ const AddGuest = () => {
                   <label className="form-label" htmlFor="district">District <span className="required">*</span></label>
                   <div className="input-wrap">
                     <span className="input-icon"><Map size={16} /></span>
-                    <select id="district" className="form-input" value={form.district} onChange={set('district')} required disabled={loading}>
-                      <option value="" disabled>Select District</option>
-                      {INDIAN_DISTRICTS.map(d => (
-                        <option key={d} value={d}>{d}</option>
-                      ))}
-                    </select>
+                    <input id="district" type="text" className="form-input" placeholder="District"
+                      value={form.district} onChange={set('district')} required disabled={loading} />
                   </div>
                 </div>
               )}
