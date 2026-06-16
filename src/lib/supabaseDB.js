@@ -241,7 +241,7 @@ export async function checkDuplicateGuest(guestName) {
   return data && data.length > 0;
 }
 
-export async function getGuests({ search, startDate, endDate, place, districtFilter, purpose, createdBy, stateFilter, countryFilter, page = 1, perPage = 20 } = {}) {
+export async function getGuests({ search, startDate, endDate, place, districtFilter, purpose, createdBy, handledBy, stateFilter, countryFilter, page = 1, perPage = 20 } = {}) {
   const { data: { user } } = await supabase.auth.getUser();
   const { data: myProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
 
@@ -254,6 +254,7 @@ export async function getGuests({ search, startDate, endDate, place, districtFil
   if (place) query = query.eq('place', place);
   if (purpose) query = query.eq('purpose', purpose);
   if (createdBy) query = query.eq('created_by', createdBy);
+  if (handledBy) query = query.eq('handled_by', handledBy);
   if (districtFilter) query = query.eq('district', districtFilter);
   if (stateFilter) query = query.eq('state', stateFilter);
   if (countryFilter) query = query.eq('country', countryFilter);
@@ -332,6 +333,15 @@ export async function getUniquePurposes() {
   return [...new Set((data || []).map(g => g.purpose).filter(Boolean))].sort();
 }
 
+export async function getUniqueHandledBy() {
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: myProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  let query = supabase.from('guest_visits').select('handled_by');
+  if (myProfile?.role !== 'super_admin') query = query.eq('created_by', user.id);
+  const { data } = await query;
+  return [...new Set((data || []).map(g => g.handled_by).filter(Boolean))].sort();
+}
+
 // ── Dashboard Stats ───────────────────────────────────────────────────────────
 
 export async function getDashboardStats() {
@@ -408,7 +418,7 @@ export async function getDashboardStats() {
 
 // ── Reports ───────────────────────────────────────────────────────────────────
 
-export async function getAllGuestsForReports({ startDate, endDate, createdBy, onlyDonations } = {}) {
+export async function getAllGuestsForReports({ startDate, endDate, createdBy, handledBy, onlyDonations } = {}) {
   const { data: { user } } = await supabase.auth.getUser();
   const { data: myProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
   const { data: allUsers } = await supabase.from('profiles').select('*');
@@ -416,6 +426,7 @@ export async function getAllGuestsForReports({ startDate, endDate, createdBy, on
   let query = supabase.from('guest_visits').select('*');
   if (myProfile?.role !== 'super_admin') query = query.eq('created_by', user.id);
   if (createdBy) query = query.eq('created_by', createdBy);
+  if (handledBy) query = query.eq('handled_by', handledBy);
   if (startDate) query = query.gte('created_at', startDate + 'T00:00:00.000Z');
   if (endDate) query = query.lte('created_at', endDate + 'T23:59:59.999Z');
   if (onlyDonations) query = query.gt('donation_amount', 0);

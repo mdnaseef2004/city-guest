@@ -6,7 +6,7 @@ import ImageCropper from '../components/ImageCropper';
 import DateRangePicker from '../components/DateRangePicker';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { getGuests, getUsers, getUniquePlaces, getUniqueDistricts, getUniquePurposes, updateGuest, deleteGuest, uploadGuestPhoto } from '../lib/supabaseDB';
+import { getGuests, getUsers, getUniquePlaces, getUniqueDistricts, getUniquePurposes, getUniqueHandledBy, updateGuest, deleteGuest, uploadGuestPhoto } from '../lib/supabaseDB';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -112,6 +112,8 @@ const GuestRecords = () => {
   const [editPhotoFile, setEditPhotoFile] = useState(null);
   const [editPhotoPreview, setEditPhotoPreview] = useState(null);
   const [cropImageSrc, setCropImageSrc] = useState(null);
+  const [handledByFilter, setHandledByFilter] = useState('');
+  const [handledByList, setHandledByList] = useState([]);
 
   const fetchRecordsRef = useRef(null);
 
@@ -123,7 +125,7 @@ const GuestRecords = () => {
         startDate: startDate ? startDate + 'T00:00:00.000Z' : '',
         endDate: endDate ? endDate + 'T23:59:59.999Z' : '',
         place: placeFilter, districtFilter, purpose: purposeFilter,
-        createdBy: adminFilter, stateFilter, countryFilter, page, perPage: PER_PAGE,
+        createdBy: adminFilter, handledBy: handledByFilter, stateFilter, countryFilter, page, perPage: PER_PAGE,
       });
       setRecords(data);
       setTotal(total);
@@ -132,7 +134,7 @@ const GuestRecords = () => {
     } finally {
       setLoading(false);
     }
-  }, [search, startDate, endDate, placeFilter, districtFilter, purposeFilter, adminFilter, stateFilter, countryFilter, page]);
+  }, [search, startDate, endDate, placeFilter, districtFilter, purposeFilter, adminFilter, handledByFilter, stateFilter, countryFilter, page]);
 
   // Keep ref always pointing to latest fetchRecords
   useEffect(() => { fetchRecordsRef.current = fetchRecords; }, [fetchRecords]);
@@ -155,12 +157,14 @@ const GuestRecords = () => {
     getUniquePlaces().then(setPlaces);
     getUniqueDistricts().then(setDistricts);
     getUniquePurposes().then(setPurposes);
+    getUniqueHandledBy().then(setHandledByList);
     if (profile?.role === 'super_admin') getUsers().then(setUsers);
   }, [profile]);
 
   const clearFilters = () => {
     setSearch(''); setStartDate(''); setEndDate('');
     setPlaceFilter(''); setDistrictFilter(''); setPurposeFilter(''); setAdminFilter('');
+    setHandledByFilter('');
     setStateFilter(''); setCountryFilter(''); setPage(1);
   };
 
@@ -173,7 +177,7 @@ const GuestRecords = () => {
         startDate: startDate ? startDate + 'T00:00:00.000Z' : '',
         endDate: endDate ? endDate + 'T23:59:59.999Z' : '',
         place: placeFilter, districtFilter, purpose: purposeFilter,
-        createdBy: adminFilter, stateFilter, countryFilter, page: 1, perPage: 100000,
+        createdBy: adminFilter, handledBy: handledByFilter, stateFilter, countryFilter, page: 1, perPage: 100000,
       });
 
       if (!data.length) {
@@ -483,6 +487,14 @@ Markaz Knowledge City`;
               {purposes.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
 
+            {/* Handled By */}
+            <select className="form-input no-icon" value={handledByFilter}
+              onChange={e => { setHandledByFilter(e.target.value); setPage(1); }}
+              style={{ flex: '1 1 140px', minWidth: 120, borderRadius: 10, cursor: 'pointer' }}>
+              <option value="">All Handled By</option>
+              {handledByList.map(h => <option key={h} value={h}>{h}</option>)}
+            </select>
+
             {/* Admins — super admin only */}
             {profile?.role === 'super_admin' && (
               <select className="form-input no-icon" value={adminFilter}
@@ -500,7 +512,7 @@ Markaz Knowledge City`;
               startDate={startDate} endDate={endDate}
               onStartDateChange={v => { setStartDate(v); setPage(1); }}
               onEndDateChange={v => { setEndDate(v); setPage(1); }} />
-            {(search || startDate || endDate || placeFilter || districtFilter || purposeFilter || adminFilter || stateFilter || countryFilter) && (
+            {(search || startDate || endDate || placeFilter || districtFilter || purposeFilter || adminFilter || stateFilter || countryFilter || handledByFilter) && (
               <button className="btn btn-ghost btn-sm" onClick={clearFilters}
                 style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--danger)' }}>
                 <X size={14} /> Clear Filters
