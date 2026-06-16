@@ -3,6 +3,7 @@ import { Users, IndianRupee, UserCheck, TrendingUp, Download, FileSpreadsheet } 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import * as XLSX from 'xlsx';
 import StatsCard from '../components/StatsCard';
+import Modal from '../components/Modal';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { getDashboardStats } from '../lib/supabaseDB';
@@ -161,6 +162,10 @@ const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Photo details modal state
+  const [selectedGuest, setSelectedGuest] = useState(null);
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
+
   const fetchStatsRef = useRef(null);
 
   const fetchStats = useCallback(() => {
@@ -208,7 +213,33 @@ const Dashboard = () => {
             <StatsCard title="Monthly Donations" value={`₹${fmt(stats?.monthlyDonations)}`} icon={TrendingUp} color="warning" subtitle="This month" />
           </div>
 
-          <div className="charts-grid">
+          {stats?.recentPhotos?.length > 0 && (
+            <div className="card mt-4">
+              <div className="card-header">
+                <h3 className="card-title">Recent Guest Photos</h3>
+              </div>
+              <div className="card-body">
+                <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', paddingBottom: '12px' }}>
+                  {stats.recentPhotos.map(guest => (
+                    <div key={guest.id} 
+                         onClick={() => { setSelectedGuest(guest); setPhotoModalOpen(true); }}
+                         style={{ cursor: 'pointer', textAlign: 'center', width: '100px', flexShrink: 0, transition: 'transform 0.2s' }}
+                         onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                         onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
+                      <div style={{ width: '80px', height: '80px', borderRadius: '50%', margin: '0 auto 8px', overflow: 'hidden', border: '2px solid var(--primary)', background: 'var(--surface-2)' }}>
+                        <img src={guest.photo_url} alt={guest.guest_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </div>
+                      <div style={{ fontSize: '12px', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {guest.guest_name}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="charts-grid mt-4">
             {stats?.guestsByPlace?.length > 0 && (
               <div className="card">
                 <div className="card-header"><h3 className="card-title">Guests by Place</h3></div>
@@ -258,6 +289,55 @@ const Dashboard = () => {
             </div>
           )}
         </>
+      )}
+
+      {/* Guest Details Modal */}
+      {selectedGuest && (
+        <Modal isOpen={photoModalOpen} onClose={() => { setPhotoModalOpen(false); setTimeout(() => setSelectedGuest(null), 200); }} title="Guest Details">
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '24px' }}>
+            <div style={{ width: '120px', height: '120px', borderRadius: '50%', overflow: 'hidden', border: '3px solid var(--primary)', marginBottom: '16px' }}>
+              <img src={selectedGuest.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            </div>
+            <h3 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text)' }}>{selectedGuest.guest_name}</h3>
+            {selectedGuest.occupation && <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontWeight: 500 }}>{selectedGuest.occupation}</p>}
+          </div>
+
+          <div className="form-grid" style={{ gap: '16px' }}>
+            <div>
+              <span className="text-muted" style={{ fontSize: '0.875rem', display: 'block' }}>Phone</span>
+              <strong>{selectedGuest.phone_number || '—'}</strong>
+            </div>
+            <div>
+              <span className="text-muted" style={{ fontSize: '0.875rem', display: 'block' }}>Location</span>
+              <strong>{selectedGuest.place}{selectedGuest.district ? `, ${selectedGuest.district}` : ''}</strong>
+            </div>
+            <div>
+              <span className="text-muted" style={{ fontSize: '0.875rem', display: 'block' }}>Purpose</span>
+              <strong>{selectedGuest.purpose}</strong>
+            </div>
+            <div>
+              <span className="text-muted" style={{ fontSize: '0.875rem', display: 'block' }}>Donation</span>
+              <strong style={{ color: 'var(--success)' }}>₹{fmt(selectedGuest.donation_amount)}</strong>
+            </div>
+            <div>
+              <span className="text-muted" style={{ fontSize: '0.875rem', display: 'block' }}>Picked Date</span>
+              <strong>{selectedGuest.picked_date ? formatDate(selectedGuest.picked_date) : '—'}</strong>
+            </div>
+            <div>
+              <span className="text-muted" style={{ fontSize: '0.875rem', display: 'block' }}>Handled By</span>
+              <strong>{selectedGuest.handled_by || '—'}</strong>
+            </div>
+            {selectedGuest.remarks && (
+              <div style={{ gridColumn: '1 / -1' }}>
+                <span className="text-muted" style={{ fontSize: '0.875rem', display: 'block' }}>Remarks</span>
+                <strong>{selectedGuest.remarks}</strong>
+              </div>
+            )}
+          </div>
+          <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
+            <button className="btn btn-secondary" onClick={() => setPhotoModalOpen(false)}>Close</button>
+          </div>
+        </Modal>
       )}
     </div>
   );

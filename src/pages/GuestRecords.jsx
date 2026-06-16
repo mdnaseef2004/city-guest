@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, X, Pencil, Trash2, ChevronLeft, ChevronRight, Plus, Map, Download, MessageSquare, FileSpreadsheet, FileText } from 'lucide-react';
+import { Search, X, Pencil, Trash2, ChevronLeft, ChevronRight, Plus, Map, Download, MessageSquare, FileSpreadsheet, FileText, Camera, UserCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
+import ImageCropper from '../components/ImageCropper';
 import DateRangePicker from '../components/DateRangePicker';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { getGuests, getUsers, getUniquePlaces, getUniqueDistricts, getUniquePurposes, updateGuest, deleteGuest } from '../lib/supabaseDB';
+import { getGuests, getUsers, getUniquePlaces, getUniqueDistricts, getUniquePurposes, updateGuest, deleteGuest, uploadGuestPhoto } from '../lib/supabaseDB';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { formatDate } from '../utils/dateUtils';
+import { DISTRICTS_BY_STATE } from '../lib/districtsByState';
 
 const loadImage = (url) => new Promise((resolve, reject) => {
   const img = new Image();
@@ -29,6 +31,7 @@ const INDIAN_STATES = [
   "Andaman and Nicobar Islands", "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu",
   "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
 ];
+
 
 const COUNTRIES = [
   "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia",
@@ -75,7 +78,7 @@ const COUNTRIES = [
 
 const EMPTY_VISIT = { id: null, visited_place: '', visit_date: '', time_in: '', time_out: '' };
 const EMPTY_FORM = { 
-  id: null, guest_name: '', phone_number: '', place: '', state: '', country: '', is_international: false, purpose: '', 
+  id: null, guest_name: '', phone_number: '', occupation: '', photo_url: '', place: '', state: '', country: '', is_international: false, purpose: '', 
   donation_amount: '', picked_from: '', picked_time: '', handled_by: '', remarks: '',
   guest_returned: '', return_date: '', return_time: '', visited_places: []
 };
@@ -106,6 +109,9 @@ const GuestRecords = () => {
   const [deleteModal, setDeleteModal] = useState(false);
   const [selected, setSelected] = useState(null);
   const [editForm, setEditForm] = useState(EMPTY_FORM);
+  const [editPhotoFile, setEditPhotoFile] = useState(null);
+  const [editPhotoPreview, setEditPhotoPreview] = useState(null);
+  const [cropImageSrc, setCropImageSrc] = useState(null);
 
   const fetchRecordsRef = useRef(null);
 
@@ -177,6 +183,7 @@ const GuestRecords = () => {
 
       const rows = data.map(r => ({
         'Guest Name': r.guest_name,
+        'Occupation': r.occupation || '',
         'Address': r.place,
         'District': r.district || '',
         'State': r.state || '',
@@ -304,8 +311,11 @@ const GuestRecords = () => {
 
   const openEdit = (r) => {
     setSelected(r);
+    setEditPhotoFile(null);
+    setEditPhotoPreview(r.photo_url || null);
     setEditForm({
       id: r.id, guest_name: r.guest_name || '', phone_number: r.phone_number || '',
+      occupation: r.occupation || '', photo_url: r.photo_url || '',
       place: r.place || '', district: r.district || '', state: r.state || '', country: r.country || '',
       is_international: r.is_international || false,
       purpose: r.purpose || '', donation_amount: r.donation_amount || '',
@@ -337,8 +347,18 @@ const GuestRecords = () => {
       return;
     }
     try {
+      let finalPhotoUrl = editForm.photo_url;
+      if (editPhotoFile) {
+        toast.loading('Uploading new photo...', { id: 'photo-up' });
+        finalPhotoUrl = await uploadGuestPhoto(editPhotoFile);
+        toast.success('Photo updated!', { id: 'photo-up' });
+      } else if (!editPhotoPreview) {
+        finalPhotoUrl = null; // User removed the photo
+      }
+
       const { visited_places, donation_amount, ...updates } = editForm;
       updates.donation_amount = Number(donation_amount) || 0;
+      updates.photo_url = finalPhotoUrl;
       await updateGuest(selected.id, updates, visited_places);
       toast.success('Guest updated successfully');
       setEditModal(false);
@@ -502,6 +522,7 @@ Markaz Knowledge City`;
               <thead>
                 <tr>
                   <th>Guest Name</th>
+                  <th>Occupation</th>
                   <th>Address</th>
                   <th>District</th>
                   <th>State / Country</th>
@@ -520,13 +541,21 @@ Markaz Knowledge City`;
                 {records.map(r => (
                   <tr key={r.id}>
                     <td>
-                      <strong>{r.guest_name}</strong>
-                      {r.is_international && (
-                        <span style={{ marginLeft: 6, fontSize: 10, background: 'rgba(99,102,241,0.15)', color: 'var(--primary)', borderRadius: 6, padding: '1px 6px', fontWeight: 600 }}>
-                          🌍 INTL
-                        </span>
-                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--surface-2)', overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {r.photo_url ? <img src={r.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <UserCircle size={20} color="var(--text-muted)" />}
+                        </div>
+                        <div>
+                          <strong>{r.guest_name}</strong>
+                          {r.is_international && (
+                            <span style={{ marginLeft: 6, fontSize: 10, background: 'rgba(99,102,241,0.15)', color: 'var(--primary)', borderRadius: 6, padding: '1px 6px', fontWeight: 600 }}>
+                              🌍 INTL
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </td>
+                    <td>{r.occupation || '—'}</td>
                     <td>{r.place}</td>
                     <td>{r.district}</td>
                     <td>{r.is_international ? (r.country || '—') : (r.state || '—')}</td>
@@ -601,37 +630,90 @@ Markaz Knowledge City`;
         <div className="form-grid" style={{ gap: '12px', maxHeight: '70vh', overflowY: 'auto', paddingRight: '8px' }}>
           
           <h4 style={{ gridColumn: '1 / -1', color: 'var(--primary)', margin: 0, marginTop: '8px' }}>Basic Details</h4>
+
+          {/* Guest Photo Upload */}
+          <div style={{ gridColumn: '1 / -1', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{
+              width: '64px', height: '64px', borderRadius: '50%', overflow: 'hidden',
+              background: 'var(--surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: '2px dashed var(--border)', flexShrink: 0
+            }}>
+              {editPhotoPreview ? (
+                <img src={editPhotoPreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <UserCircle size={32} color="var(--text-muted)" />
+              )}
+            </div>
+            <div style={{ flex: 1 }}>
+              <label className="form-label" style={{ marginBottom: '8px', display: 'block' }}>Guest Photo</label>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: 'var(--primary)', color: 'white', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}>
+                <Camera size={14} /> Change Photo
+                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    if (file.size > 5 * 1024 * 1024) { toast.error('Photo must be less than 5MB'); return; }
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      setCropImageSrc(reader.result);
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                  e.target.value = '';
+                }} disabled={loading} />
+              </label>
+              {(editPhotoPreview) && (
+                <button type="button" onClick={() => { setEditPhotoFile(null); setEditPhotoPreview(null); }} className="btn btn-ghost btn-sm" style={{ marginLeft: '12px', color: 'var(--danger)', fontSize: '12px' }} disabled={loading}>
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* 1. Guest Name */}
           <div className="form-group">
             <label className="form-label">Guest Name</label>
             <input type="text" className="form-input no-icon" value={editForm.guest_name}
               onChange={e => setEditForm(f => ({ ...f, guest_name: e.target.value }))} />
           </div>
+
+          {/* 2. Phone Number */}
+          <div className="form-group">
+            <label className="form-label">Phone {!editForm.is_international && <span className="required">*</span>}</label>
+            <input type="tel" className="form-input no-icon" value={editForm.phone_number}
+              onChange={e => setEditForm(f => ({ ...f, phone_number: e.target.value }))} />
+          </div>
+
+          {/* 3. Occupation (optional) */}
+          <div className="form-group">
+            <label className="form-label">Occupation</label>
+            <input type="text" className="form-input no-icon" placeholder="e.g., Engineer, Teacher"
+              value={editForm.occupation}
+              onChange={e => setEditForm(f => ({ ...f, occupation: e.target.value }))} />
+          </div>
+
+          {/* 4. Address */}
           <div className="form-group">
             <label className="form-label">Address</label>
             <input type="text" className="form-input no-icon" value={editForm.place}
               onChange={e => setEditForm(f => ({ ...f, place: e.target.value }))} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">District</label>
-            <input type="text" className="form-input no-icon" value={editForm.district}
-              onChange={e => setEditForm(f => ({ ...f, district: e.target.value }))} />
           </div>
 
           {/* International toggle in edit modal */}
           <div className="form-group" style={{ gridColumn: '1 / -1' }}>
             <label style={{ display: 'inline-flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '8px 14px', background: editForm.is_international ? 'rgba(99,102,241,0.1)' : 'var(--surface-2)', border: editForm.is_international ? '1.5px solid var(--primary)' : '1.5px solid var(--border)', borderRadius: 10, transition: 'all 0.2s' }}>
               <input type="checkbox" checked={editForm.is_international}
-                onChange={e => setEditForm(f => ({ ...f, is_international: e.target.checked, state: '', country: '' }))}
+                onChange={e => setEditForm(f => ({ ...f, is_international: e.target.checked, state: '', country: '', district: '' }))}
                 style={{ width: 16, height: 16, accentColor: 'var(--primary)', cursor: 'pointer' }} />
               <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>🌍 International Guest</span>
             </label>
           </div>
 
+          {/* 4. State (domestic) or Country (international) */}
           {!editForm.is_international ? (
             <div className="form-group">
               <label className="form-label">State</label>
               <select className="form-input no-icon" value={editForm.state}
-                onChange={e => setEditForm(f => ({ ...f, state: e.target.value }))}>
+                onChange={e => setEditForm(f => ({ ...f, state: e.target.value, district: '' }))}>
                 <option value="">Select State</option>
                 {INDIAN_STATES.map(st => (
                   <option key={st} value={st}>{st}</option>
@@ -651,7 +733,26 @@ Markaz Knowledge City`;
             </div>
           )}
 
-          {[['purpose', 'Purpose', 'text', true], ['donation_amount', 'Donation (₹)', 'number', false], ['phone_number', 'Phone', 'tel', 'phone_conditional'], ['picked_date', 'Picked Date', 'date', false], ['picked_from', 'Picked From', 'text', false], ['picked_time', 'Picked Time', 'time', false], ['handled_by', 'Handled By', 'text', true]].map(([k, lbl, type, req]) => (
+          {/* 5. District — dropdown for TN/KA, text input otherwise */}
+          {!editForm.is_international && (
+            <div className="form-group">
+              <label className="form-label">District</label>
+              {DISTRICTS_BY_STATE[editForm.state] ? (
+                <select className="form-input no-icon" value={editForm.district}
+                  onChange={e => setEditForm(f => ({ ...f, district: e.target.value }))}>
+                  <option value="">Select District</option>
+                  {DISTRICTS_BY_STATE[editForm.state].map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              ) : (
+                <input type="text" className="form-input no-icon" value={editForm.district}
+                  onChange={e => setEditForm(f => ({ ...f, district: e.target.value }))} />
+              )}
+            </div>
+          )}
+
+          {[['purpose', 'Purpose', 'text', true], ['donation_amount', 'Donation (₹)', 'number', false], ['phone_number', 'Phone', 'tel', 'phone_conditional'], ['picked_date', 'Picked Date', 'date', false], ['picked_from', 'Picked From', 'text', false], ['picked_time', 'Picked Time', 'time', false]].map(([k, lbl, type, req]) => (
             <div className="form-group" key={k}>
               <label className="form-label">{lbl} {req === 'phone_conditional' ? (!editForm.is_international && <span className="required">*</span>) : (req && <span className="required">*</span>)}</label>
               <input type={type} className="form-input no-icon" value={editForm[k]}
@@ -659,6 +760,26 @@ Markaz Knowledge City`;
                 required={req === 'phone_conditional' ? !editForm.is_international : req} />
             </div>
           ))}
+
+          {/* Handled By — dropdown for super_admin, text for sub_admin */}
+          <div className="form-group">
+            <label className="form-label">Handled By <span className="required">*</span></label>
+            {profile?.role === 'super_admin' ? (
+              <select className="form-input no-icon" value={editForm.handled_by}
+                onChange={e => setEditForm(f => ({ ...f, handled_by: e.target.value }))} required>
+                <option value="">Select person...</option>
+                {users.map(u => (
+                  <option key={u.id} value={u.name}>
+                    {u.name} ({u.role === 'super_admin' ? 'Super Admin' : 'Sub Admin'})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input type="text" className="form-input no-icon" value={editForm.handled_by}
+                onChange={e => setEditForm(f => ({ ...f, handled_by: e.target.value }))}
+                required placeholder="Name of handler" />
+            )}
+          </div>
           
           <h4 style={{ gridColumn: '1 / -1', color: 'var(--primary)', margin: 0, marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             Visited Places
@@ -732,6 +853,18 @@ Markaz Knowledge City`;
         confirmText="Delete" confirmVariant="danger" onConfirm={handleDelete}>
         <p>Are you sure you want to delete the entry for <strong>{selected?.guest_name}</strong>? This cannot be undone.</p>
       </Modal>
+
+      {cropImageSrc && (
+        <ImageCropper
+          imageSrc={cropImageSrc}
+          onCropComplete={(croppedFile, previewUrl) => {
+            setEditPhotoFile(croppedFile);
+            setEditPhotoPreview(previewUrl);
+            setCropImageSrc(null);
+          }}
+          onCancel={() => setCropImageSrc(null)}
+        />
+      )}
     </div>
   );
 };

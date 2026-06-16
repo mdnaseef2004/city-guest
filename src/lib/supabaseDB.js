@@ -156,15 +156,42 @@ export async function uploadAvatar(userId, file) {
   return `${SUPABASE_URL}/storage/v1/object/public/pdfs/avatars/${fileName}`;
 }
 
+export async function uploadGuestPhoto(file) {
+  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+  const SERVICE_KEY = import.meta.env.VITE_SUPABASE_SERVICE_KEY;
+
+  const fileExt = file.name.split('.').pop();
+  const fileName = `guest-photo-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/pdfs/photos/${fileName}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${SERVICE_KEY}`,
+      'apikey': SERVICE_KEY,
+      'Content-Type': file.type || 'image/jpeg',
+    },
+    body: file
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.message || 'Failed to upload guest photo');
+  }
+
+  return `${SUPABASE_URL}/storage/v1/object/public/pdfs/photos/${fileName}`;
+}
+
 // ── Guests ────────────────────────────────────────────────────────────────────
 
-export async function addGuest({ guest_name, phone_number, place, district, state, country, is_international, purpose, donation_amount, picked_from, picked_date, picked_time, guest_returned, return_date, return_time, handled_by, remarks, visits }) {
+export async function addGuest({ guest_name, phone_number, occupation, photo_url, place, district, state, country, is_international, purpose, donation_amount, picked_from, picked_date, picked_time, guest_returned, return_date, return_time, handled_by, remarks, visits }) {
   const { data: { user } } = await supabase.auth.getUser();
   
   // 1. Insert into guest_visits
   const { data: visitData, error: visitError } = await supabase.from('guest_visits').insert({
     guest_name,
     phone_number,
+    occupation: occupation || null,
+    photo_url: photo_url || null,
     place,
     district,
     state,
@@ -361,6 +388,11 @@ export async function getDashboardStats() {
     };
   }).sort((a, b) => b.totalEntries - a.totalEntries);
 
+  const recentPhotos = g
+    .filter(x => x.photo_url)
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .slice(0, 20);
+
   return {
     totalGuests: g.length,
     totalDonations: g.reduce((s, x) => s + (x.donation_amount || 0), 0),
@@ -370,6 +402,7 @@ export async function getDashboardStats() {
     guestsByPurpose,
     subAdminPerf,
     superAdminPerf,
+    recentPhotos,
   };
 }
 

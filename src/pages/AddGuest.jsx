@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { User, MapPin, Target, IndianRupee, Phone, MessageSquare, Clock, UserCircle, Car, Map, Plus, Trash2, Briefcase } from 'lucide-react';
+import { User, MapPin, Target, IndianRupee, Phone, MessageSquare, Clock, UserCircle, Car, Map, Plus, Trash2, Briefcase, Camera } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import { useAuth } from '../contexts/AuthContext';
-import { addGuest, checkDuplicateGuest, getUniquePurposes, uploadGuestPDF } from '../lib/supabaseDB';
+import { addGuest, checkDuplicateGuest, getUniquePurposes, getUsers, uploadGuestPDF, uploadGuestPhoto } from '../lib/supabaseDB';
 import { generateGuestVisitPDF } from '../lib/pdfGenerator';
-import { INDIAN_DISTRICTS } from '../lib/districts';
+import { DISTRICTS_BY_STATE } from '../lib/districtsByState';
+import ImageCropper from '../components/ImageCropper';
+
+
 
 const INDIAN_STATES = [
   "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana",
@@ -45,7 +48,7 @@ const COUNTRIES = [
 
 const EMPTY_VISIT = { visited_place: '', visit_date: '', time_in: '', time_out: '' };
 const EMPTY = { 
-  guest_name: '', mobile_number: '', place: '', district: '', state: '', country: '', is_international: false, purpose: '', donation_amount: '',
+  guest_name: '', mobile_number: '', occupation: '', place: '', district: '', state: '', country: '', is_international: false, purpose: '', donation_amount: '',
   picked_from: '', picked_date: '', picked_time: '', handled_by: '', visits: [], guest_returned: '', return_date: '', return_time: '', remarks: '' 
 };
 
@@ -55,13 +58,20 @@ const AddGuest = () => {
   const [loading, setLoading] = useState(false);
   const [now, setNow] = useState(new Date());
   const [purposes, setPurposes] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [cropImageSrc, setCropImageSrc] = useState(null);
   const [dupModal, setDupModal] = useState(false);
 
   useEffect(() => {
     getUniquePurposes().then(setPurposes);
+    if (profile?.role === 'super_admin') {
+      getUsers().then(setAllUsers);
+    }
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [profile]);
 
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
 
@@ -77,9 +87,18 @@ const AddGuest = () => {
   const doSubmit = async () => {
     setLoading(true);
     try {
+      let photo_url = null;
+      if (photoFile) {
+        toast.loading('Uploading guest photo...', { id: 'photo-up' });
+        photo_url = await uploadGuestPhoto(photoFile);
+        toast.success('Photo uploaded!', { id: 'photo-up' });
+      }
+
       const savedVisit = await addGuest({
         guest_name: form.guest_name.trim(),
         phone_number: form.mobile_number.trim(), // API expects phone_number now
+        occupation: form.occupation.trim() || null,
+        photo_url: photo_url,
         place: form.place.trim(),
         district: form.district.trim(),
         state: form.is_international ? null : form.state,
@@ -106,6 +125,8 @@ const AddGuest = () => {
 
       toast.success('Guest entry saved successfully!');
       setForm(EMPTY);
+      setPhotoFile(null);
+      setPhotoPreview(null);
       const pu = await getUniquePurposes();
       setPurposes(pu);
     } catch (err) {
@@ -128,6 +149,23 @@ const AddGuest = () => {
     const isDup = await checkDuplicateGuest(form.guest_name);
     if (isDup) { setDupModal(true); return; }
     await doSubmit();
+  };
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Photo must be less than 5MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        setCropImageSrc(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+    // Clear the input value so the same file can be selected again if needed
+    e.target.value = '';
   };
 
   return (
@@ -156,7 +194,36 @@ const AddGuest = () => {
         <div className="card-body">
           <form onSubmit={handleSubmit}>
             <h3 style={{ marginBottom: '16px', fontSize: '1.1rem', color: 'var(--primary)' }}>Guest Details</h3>
+            
+            {/* Guest Photo Upload */}
+            <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{
+                width: '80px', height: '80px', borderRadius: '50%', overflow: 'hidden',
+                background: 'var(--surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: '2px dashed var(--border)', flexShrink: 0
+              }}>
+                {photoPreview ? (
+                  <img src={photoPreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <UserCircle size={40} color="var(--text-muted)" />
+                )}
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="form-label" style={{ marginBottom: '8px', display: 'block' }}>Guest Photo (Optional)</label>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: 'var(--primary)', color: 'white', borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 600 }}>
+                  <Camera size={16} /> Choose Photo
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhotoChange} disabled={loading} />
+                </label>
+                {photoFile && (
+                  <button type="button" onClick={() => { setPhotoFile(null); setPhotoPreview(null); }} className="btn btn-ghost btn-sm" style={{ marginLeft: '12px', color: 'var(--danger)' }} disabled={loading}>
+                    Remove
+                  </button>
+                )}
+              </div>
+            </div>
+
             <div className="form-grid">
+              {/* 1. Guest Name */}
               <div className="form-group">
                 <label className="form-label" htmlFor="guest_name">Guest Name <span className="required">*</span></label>
                 <div className="input-wrap">
@@ -166,6 +233,7 @@ const AddGuest = () => {
                 </div>
               </div>
 
+              {/* 2. Phone Number */}
               <div className="form-group">
                 <label className="form-label" htmlFor="mobile">Phone Number {!form.is_international && <span className="required">*</span>}</label>
                 <div className="input-wrap">
@@ -175,6 +243,17 @@ const AddGuest = () => {
                 </div>
               </div>
 
+              {/* 3. Occupation (optional) */}
+              <div className="form-group">
+                <label className="form-label" htmlFor="occupation">Occupation</label>
+                <div className="input-wrap">
+                  <span className="input-icon"><Briefcase size={16} /></span>
+                  <input id="occupation" type="text" className="form-input" placeholder="e.g., Engineer, Teacher"
+                    value={form.occupation} onChange={set('occupation')} disabled={loading} />
+                </div>
+              </div>
+
+              {/* 4. Address */}
               <div className="form-group">
                 <label className="form-label" htmlFor="place">Address <span className="required">*</span></label>
                 <div className="input-wrap">
@@ -183,17 +262,6 @@ const AddGuest = () => {
                     value={form.place} onChange={set('place')} required disabled={loading} />
                 </div>
               </div>
-
-              {!form.is_international && (
-                <div className="form-group">
-                  <label className="form-label" htmlFor="district">District <span className="required">*</span></label>
-                  <div className="input-wrap">
-                    <span className="input-icon"><Map size={16} /></span>
-                    <input id="district" type="text" className="form-input" placeholder="District"
-                      value={form.district} onChange={set('district')} required disabled={loading} />
-                  </div>
-                </div>
-              )}
 
               {/* International Guest Checkbox */}
               <div className="form-group" style={{ gridColumn: '1 / -1' }}>
@@ -207,7 +275,7 @@ const AddGuest = () => {
                   <input
                     type="checkbox"
                     checked={form.is_international}
-                    onChange={e => setForm(f => ({ ...f, is_international: e.target.checked, state: '', country: '' }))}
+                    onChange={e => setForm(f => ({ ...f, is_international: e.target.checked, state: '', country: '', district: '' }))}
                     disabled={loading}
                     style={{ width: 18, height: 18, accentColor: 'var(--primary)', cursor: 'pointer' }}
                   />
@@ -218,13 +286,15 @@ const AddGuest = () => {
                 </label>
               </div>
 
-              {/* State (domestic) OR Country (international) */}
+              {/* 4. State (domestic) OR Country (international) */}
               {!form.is_international ? (
                 <div className="form-group">
                   <label className="form-label" htmlFor="state">State <span className="required">*</span></label>
                   <div className="input-wrap">
                     <span className="input-icon"><Map size={16} /></span>
-                    <select id="state" className="form-input" value={form.state} onChange={set('state')} required disabled={loading}>
+                    <select id="state" className="form-input" value={form.state}
+                      onChange={e => setForm(f => ({ ...f, state: e.target.value, district: '' }))}
+                      required disabled={loading}>
                       <option value="" disabled>Select State</option>
                       {INDIAN_STATES.map(st => (
                         <option key={st} value={st}>{st}</option>
@@ -243,6 +313,28 @@ const AddGuest = () => {
                         <option key={c} value={c}>{c}</option>
                       ))}
                     </select>
+                  </div>
+                </div>
+              )}
+
+              {/* 5. District — dropdown for TN/KA, text input for others */}
+              {!form.is_international && (
+                <div className="form-group">
+                  <label className="form-label" htmlFor="district">District <span className="required">*</span></label>
+                  <div className="input-wrap">
+                    <span className="input-icon"><Map size={16} /></span>
+                    {DISTRICTS_BY_STATE[form.state] ? (
+                      <select id="district" className="form-input" value={form.district}
+                        onChange={set('district')} required disabled={loading}>
+                        <option value="" disabled>Select District</option>
+                        {DISTRICTS_BY_STATE[form.state].map(d => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input id="district" type="text" className="form-input" placeholder="District"
+                        value={form.district} onChange={set('district')} required disabled={loading} />
+                    )}
                   </div>
                 </div>
               )}
@@ -291,8 +383,20 @@ const AddGuest = () => {
                 <label className="form-label" htmlFor="handled_by">Handled By <span className="required">*</span></label>
                 <div className="input-wrap">
                   <span className="input-icon"><Briefcase size={16} /></span>
-                  <input id="handled_by" type="text" className="form-input" placeholder="Name of handler"
-                    value={form.handled_by} onChange={set('handled_by')} required disabled={loading} />
+                  {profile?.role === 'super_admin' ? (
+                    <select id="handled_by" className="form-input" value={form.handled_by}
+                      onChange={set('handled_by')} required disabled={loading}>
+                      <option value="">Select person...</option>
+                      {allUsers.map(u => (
+                        <option key={u.id} value={u.name}>{u.name} ({u.role === 'super_admin' ? 'Super Admin' : 'Sub Admin'})</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input id="handled_by" type="text" className="form-input"
+                      value={form.handled_by || profile?.name || ''}
+                      onChange={set('handled_by')} required disabled={loading}
+                      placeholder={profile?.name || 'Your name'} />
+                  )}
                 </div>
               </div>
             </div>
@@ -402,6 +506,17 @@ const AddGuest = () => {
         <p>A guest named <strong>"{form.guest_name}"</strong> was already recorded today by you.</p>
         <p style={{ marginTop: 8 }}>Do you want to add another entry for the same guest?</p>
       </Modal>
+      {cropImageSrc && (
+        <ImageCropper
+          imageSrc={cropImageSrc}
+          onCropComplete={(croppedFile, previewUrl) => {
+            setPhotoFile(croppedFile);
+            setPhotoPreview(previewUrl);
+            setCropImageSrc(null);
+          }}
+          onCancel={() => setCropImageSrc(null)}
+        />
+      )}
     </div>
   );
 };
