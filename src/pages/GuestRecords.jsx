@@ -338,7 +338,8 @@ const GuestRecords = () => {
   const removeVisit = (index) => setEditForm(f => ({ ...f, visited_places: f.visited_places.filter((_, i) => i !== index) }));
 
   const handleEdit = async () => {
-    if (!editForm.handled_by.trim()) {
+    const handledByVal = profile?.role === 'super_admin' ? editForm.handled_by.trim() : (profile?.name || '');
+    if (!handledByVal) {
       toast.error('Handled By is required');
       return;
     }
@@ -359,6 +360,7 @@ const GuestRecords = () => {
       const { visited_places, donation_amount, ...updates } = editForm;
       updates.donation_amount = Number(donation_amount) || 0;
       updates.photo_url = finalPhotoUrl;
+      updates.handled_by = profile?.role === 'super_admin' ? editForm.handled_by.trim() : (profile?.name || '');
       await updateGuest(selected.id, updates, visited_places);
       toast.success('Guest updated successfully');
       setEditModal(false);
@@ -775,9 +777,8 @@ Markaz Knowledge City`;
                 ))}
               </select>
             ) : (
-              <input type="text" className="form-input no-icon" value={editForm.handled_by}
-                onChange={e => setEditForm(f => ({ ...f, handled_by: e.target.value }))}
-                required placeholder="Name of handler" />
+              <input type="text" className="form-input no-icon" value={profile?.name || ''}
+                readOnly disabled required />
             )}
           </div>
           

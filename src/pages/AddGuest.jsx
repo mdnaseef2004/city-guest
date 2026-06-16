@@ -109,7 +109,7 @@ const AddGuest = () => {
         picked_from: form.picked_from.trim(),
         picked_date: form.picked_date || null,
         picked_time: form.picked_time,
-        handled_by: form.handled_by.trim(),
+        handled_by: profile?.role === 'super_admin' ? form.handled_by.trim() : (profile?.name || ''),
         visits: form.visits,
         guest_returned: form.guest_returned,
         return_date: form.return_date,
@@ -142,7 +142,8 @@ const AddGuest = () => {
     const locationValid = form.is_international ? !!form.country : !!form.state;
     const districtValid = form.is_international || !!form.district.trim();
     const phoneValid = form.is_international || !!form.mobile_number.trim();
-    if (!form.guest_name.trim() || !phoneValid || !form.place.trim() || !districtValid || !locationValid || !form.purpose.trim() || !form.handled_by.trim()) {
+    const handledByVal = profile?.role === 'super_admin' ? form.handled_by.trim() : (profile?.name || '');
+    if (!form.guest_name.trim() || !phoneValid || !form.place.trim() || !districtValid || !locationValid || !form.purpose.trim() || !handledByVal) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -393,9 +394,8 @@ const AddGuest = () => {
                     </select>
                   ) : (
                     <input id="handled_by" type="text" className="form-input"
-                      value={form.handled_by || profile?.name || ''}
-                      onChange={set('handled_by')} required disabled={loading}
-                      placeholder={profile?.name || 'Your name'} />
+                      value={profile?.name || ''}
+                      readOnly disabled required />
                   )}
                 </div>
               </div>
