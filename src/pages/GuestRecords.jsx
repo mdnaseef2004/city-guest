@@ -665,12 +665,8 @@ Markaz Knowledge City`;
                 <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
                   const file = e.target.files[0];
                   if (file) {
-                    if (file.size > 5 * 1024 * 1024) { toast.error('Photo must be less than 5MB'); return; }
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                      setCropImageSrc(reader.result);
-                    };
-                    reader.readAsDataURL(file);
+                    if (file.size > 20 * 1024 * 1024) { toast.error('Photo must be less than 20MB'); return; }
+                    setCropImageSrc(URL.createObjectURL(file));
                   }
                   e.target.value = '';
                 }} disabled={loading} />

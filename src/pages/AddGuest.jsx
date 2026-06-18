@@ -155,15 +155,11 @@ const AddGuest = () => {
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('Photo must be less than 5MB');
+      if (file.size > 20 * 1024 * 1024) {
+        toast.error('Photo must be less than 20MB');
         return;
       }
-      const reader = new FileReader();
-      reader.onload = () => {
-        setCropImageSrc(reader.result);
-      };
-      reader.readAsDataURL(file);
+      setCropImageSrc(URL.createObjectURL(file));
     }
     // Clear the input value so the same file can be selected again if needed
     e.target.value = '';
