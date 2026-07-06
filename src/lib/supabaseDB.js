@@ -199,6 +199,7 @@ export async function addGuest({ guest_name, phone_number, occupation, photo_url
     is_international: is_international || false,
     purpose,
     donation_amount: Number(donation_amount) || 0,
+    receipt_no: receipt_no || null,
     picked_from: picked_from || '',
     picked_date: picked_date || null,
     picked_time: picked_time || null,

@@ -103,10 +103,10 @@ const DetailedTable = ({ rows }) => (
   <div className="card"><div className="card-body" style={{ padding: 0, overflowX: 'auto' }}>
     {rows.length === 0 ? <div className="empty-state" style={{ padding: 40 }}><p>No records found.</p></div> : (
       <table className="table"><thead><tr>
-        <th>Guest Name</th><th>Occupation</th><th>Address</th><th>State/Country</th><th>Donation</th><th>Phone Number</th><th>Handled By</th><th>Entered By</th><th>Date</th>
+        <th>Guest Name</th><th>Occupation</th><th>Address</th><th>State/Country</th><th>Donation</th><th>Receipt No</th><th>Phone Number</th><th>Handled By</th><th>Entered By</th><th>Date</th>
       </tr></thead>
         <tbody>{rows.map(r => <tr key={r.id}>
-          <td>{r.guest_name}</td><td>{r.occupation || '—'}</td><td>{r.place}</td><td>{r.is_international ? r.country : (r.state || '—')}</td><td><strong>₹{fmt(r.donation_amount)}</strong></td>
+          <td>{r.guest_name}</td><td>{r.occupation || '—'}</td><td>{r.place}</td><td>{r.is_international ? r.country : (r.state || '—')}</td><td><strong>₹{fmt(r.donation_amount)}</strong></td><td>{r.receipt_no || '—'}</td>
           <td>{r.phone_number || r.mobile_number || '—'}</td><td>{r.handled_by || '—'}</td><td>{r.profiles?.name}</td><td>{formatDate(r.created_at)}</td>
         </tr>)}</tbody>
       </table>
@@ -198,7 +198,7 @@ const Reports = () => {
 
   const mapExportData = (rows) => rows.map(r => ({
     'Guest Name': r.guest_name, 'Occupation': r.occupation || '', 'Address': r.place, 'State': r.is_international ? '' : r.state || '', 'Country': r.is_international ? r.country : '',
-    'Donation (₹)': r.donation_amount || 0, 'Phone Number': r.phone_number || r.mobile_number || '',
+    'Donation (₹)': r.donation_amount || 0, 'Receipt No': r.receipt_no || '', 'Phone Number': r.phone_number || r.mobile_number || '',
     'Handled By': r.handled_by || '', 'Entered By': r.profiles?.name || 'Unknown', 'Date Entered': formatDate(r.created_at)
   }));
 

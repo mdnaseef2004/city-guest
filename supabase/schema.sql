@@ -35,6 +35,7 @@ create table public.guest_visits (
   handled_by text,
   remarks text,
   pdf_url text,
+  receipt_no text,
   created_by uuid references public.profiles(id) not null,
   created_at timestamptz default now()
 );

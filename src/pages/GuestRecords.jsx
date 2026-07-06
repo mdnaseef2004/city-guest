@@ -79,7 +79,7 @@ const COUNTRIES = [
 const EMPTY_VISIT = { id: null, visited_place: '', visit_date: '', time_in: '', time_out: '' };
 const EMPTY_FORM = { 
   id: null, guest_name: '', phone_number: '', occupation: '', photo_url: '', place: '', state: '', country: '', is_international: false, purpose: '', 
-  donation_amount: '', picked_from: '', picked_time: '', handled_by: '', remarks: '',
+  donation_amount: '', receipt_no: '', picked_from: '', picked_time: '', handled_by: '', remarks: '',
   guest_returned: '', return_date: '', return_time: '', visited_places: []
 };
 
@@ -195,6 +195,7 @@ const GuestRecords = () => {
         'Phone Number': r.phone_number || '',
         'Purpose': r.purpose,
         'Donation (₹)': r.donation_amount || 0,
+        'Receipt No': r.receipt_no || '',
         'Picked Date': r.picked_date || '',
         'Picked From': r.picked_from || '',
         'Picked Time': r.picked_time || '',
@@ -322,7 +323,7 @@ const GuestRecords = () => {
       occupation: r.occupation || '', photo_url: r.photo_url || '',
       place: r.place || '', district: r.district || '', state: r.state || '', country: r.country || '',
       is_international: r.is_international || false,
-      purpose: r.purpose || '', donation_amount: r.donation_amount || '',
+      purpose: r.purpose || '', donation_amount: r.donation_amount || '', receipt_no: r.receipt_no || '',
       picked_date: r.picked_date || '', picked_from: r.picked_from || '', picked_time: r.picked_time || '',
       handled_by: r.handled_by || '', remarks: r.remarks || '',
       guest_returned: r.guest_returned || '', return_date: r.return_date || '', return_time: r.return_time || '',
@@ -361,8 +362,13 @@ const GuestRecords = () => {
         finalPhotoUrl = null; // User removed the photo
       }
 
-      const { visited_places, donation_amount, ...updates } = editForm;
+      const { visited_places, donation_amount, receipt_no, ...updates } = editForm;
       updates.donation_amount = Number(donation_amount) || 0;
+      updates.receipt_no = receipt_no ? receipt_no.trim() : null;
+      if (updates.donation_amount > 0 && !updates.receipt_no) {
+        toast.error('Please enter the Receipt No for the donation');
+        return;
+      }
       updates.photo_url = finalPhotoUrl;
       updates.handled_by = profile?.role === 'super_admin' ? editForm.handled_by.trim() : (profile?.name || '');
       await updateGuest(selected.id, updates, visited_places);
@@ -542,6 +548,7 @@ Markaz Knowledge City`;
                   <th>State / Country</th>
                   <th>Purpose</th>
                   <th>Donation</th>
+                  <th>Receipt No</th>
                   <th>Picked Date</th>
                   <th>Phone</th>
                   <th>Returned</th>
@@ -575,6 +582,7 @@ Markaz Knowledge City`;
                     <td>{r.is_international ? (r.country || '—') : (r.state || '—')}</td>
                     <td>{r.purpose}</td>
                     <td>₹{Number(r.donation_amount || 0).toLocaleString('en-IN')}</td>
+                    <td>{r.receipt_no || '—'}</td>
                     <td>{r.picked_date ? formatDate(r.picked_date) : '—'}</td>
                     <td>{r.phone_number || '—'}</td>
                     <td>
@@ -770,6 +778,14 @@ Markaz Knowledge City`;
                 required={req === 'phone_conditional' ? !editForm.is_international : req} />
             </div>
           ))}
+
+          {Number(editForm.donation_amount) > 0 && (
+            <div className="form-group">
+              <label className="form-label">Receipt No <span className="required">*</span></label>
+              <input type="text" className="form-input no-icon" value={editForm.receipt_no}
+                onChange={e => setEditForm(f => ({ ...f, receipt_no: e.target.value }))} required />
+            </div>
+          )}
 
           {/* Handled By — dropdown for super_admin, text for sub_admin */}
           <div className="form-group">

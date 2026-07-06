@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, MapPin, Target, IndianRupee, Phone, MessageSquare, Clock, UserCircle, Car, Map, Plus, Trash2, Briefcase, Camera } from 'lucide-react';
+import { User, MapPin, Target, IndianRupee, Phone, MessageSquare, Clock, UserCircle, Car, Map, Plus, Trash2, Briefcase, Camera, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import { useAuth } from '../contexts/AuthContext';
@@ -48,7 +48,7 @@ const COUNTRIES = [
 
 const EMPTY_VISIT = { visited_place: '', visit_date: '', time_in: '', time_out: '' };
 const EMPTY = { 
-  guest_name: '', mobile_number: '', occupation: '', place: '', district: '', state: '', country: '', is_international: false, purpose: '', donation_amount: '',
+  guest_name: '', mobile_number: '', occupation: '', place: '', district: '', state: '', country: '', is_international: false, purpose: '', donation_amount: '', receipt_no: '',
   picked_from: '', picked_date: '', picked_time: '', handled_by: '', visits: [], guest_returned: '', return_date: '', return_time: '', remarks: '' 
 };
 
@@ -106,6 +106,7 @@ const AddGuest = () => {
         is_international: form.is_international,
         purpose: form.purpose.trim(),
         donation_amount: form.donation_amount,
+        receipt_no: form.receipt_no ? form.receipt_no.trim() : null,
         picked_from: form.picked_from.trim(),
         picked_date: form.picked_date || null,
         picked_time: form.picked_time,
@@ -145,6 +146,10 @@ const AddGuest = () => {
     const handledByVal = profile?.role === 'super_admin' ? form.handled_by.trim() : (profile?.name || '');
     if (!form.guest_name.trim() || !phoneValid || !form.place.trim() || !districtValid || !locationValid || !form.purpose.trim() || !handledByVal) {
       toast.error('Please fill in all required fields');
+      return;
+    }
+    if (Number(form.donation_amount) > 0 && !form.receipt_no?.trim()) {
+      toast.error('Please enter the Receipt No for the donation');
       return;
     }
     const isDup = await checkDuplicateGuest(form.guest_name);
@@ -354,6 +359,17 @@ const AddGuest = () => {
                     value={form.donation_amount} onChange={set('donation_amount')} disabled={loading} />
                 </div>
               </div>
+
+              {Number(form.donation_amount) > 0 && (
+                <div className="form-group">
+                  <label className="form-label" htmlFor="receipt_no">Receipt No <span className="required">*</span></label>
+                  <div className="input-wrap">
+                    <span className="input-icon"><FileText size={16} /></span>
+                    <input id="receipt_no" type="text" className="form-input" placeholder="e.g. REC-12345"
+                      value={form.receipt_no} onChange={set('receipt_no')} required disabled={loading} />
+                  </div>
+                </div>
+              )}
 
               <div className="form-group">
                 <label className="form-label" htmlFor="picked_date">Picked Date</label>
