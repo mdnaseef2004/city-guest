@@ -1,5 +1,5 @@
-﻿import React, { useState, useEffect } from "react";
-import { Download, FileSpreadsheet, FileText } from "lucide-react";
+﻿import React, { useState, useEffect, useMemo } from "react";
+import { Download, FileSpreadsheet, FileText, CalendarDays, Users, Building2, TrendingUp, Award } from "lucide-react";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -7,10 +7,15 @@ import DateRangePicker from "../components/DateRangePicker";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
 import { formatDate } from "../utils/dateUtils";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend
+} from "recharts";
 
 const fmt = (n) => Number(n || 0).toLocaleString("en-IN");
 const today = () => new Date().toISOString().slice(0, 10);
 const thisMonth = () => new Date().toISOString().slice(0, 7);
+
+const COLORS = ["#10b981", "#6366f1", "#f59e0b", "#ef4444", "#8b5cf6", "#0ea5e9", "#f43f5e", "#84cc16"];
 
 const loadImage = (url) => new Promise((resolve, reject) => {
   const img = new Image(); img.crossOrigin = "Anonymous";
@@ -120,27 +125,229 @@ const EventTable = ({ rows }) => (
   </div></div>
 );
 
+const StatCard = ({ icon: Icon, label, value, color = "var(--primary)" }) => (
+  <div className="card">
+    <div className="card-body" style={{ display: "flex", alignItems: "center", gap: 16 }}>
+      <div style={{ width: 52, height: 52, borderRadius: 14, background: `${color}20`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <Icon size={24} color={color} />
+      </div>
+      <div>
+        <div className="text-muted" style={{ fontSize: 13 }}>{label}</div>
+        <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "var(--text)", lineHeight: 1.1 }}>{value}</div>
+      </div>
+    </div>
+  </div>
+);
+
+const EventDashboard = ({ allRows }) => {
+  const totalEvents = allRows.length;
+  const totalMembers = allRows.reduce((s, r) => s + (r.members_count || 0), 0);
+  const avgMembers = totalEvents > 0 ? Math.round(totalMembers / totalEvents) : 0;
+
+  // Largest single event
+  const biggest = allRows.reduce((best, r) => (!best || r.members_count > best.members_count ? r : best), null);
+
+  // Monthly events bar chart (last 6 months)
+  const monthlyData = useMemo(() => {
+    const map = {};
+    allRows.forEach((r) => {
+      const key = r.event_date?.slice(0, 7);
+      if (!key) return;
+      if (!map[key]) map[key] = { month: key, events: 0, members: 0 };
+      map[key].events += 1;
+      map[key].members += r.members_count || 0;
+    });
+    return Object.values(map)
+      .sort((a, b) => a.month.localeCompare(b.month))
+      .slice(-6)
+      .map((d) => ({ ...d, label: new Date(d.month + "-01").toLocaleString("en-US", { month: "short", year: "2-digit" }) }));
+  }, [allRows]);
+
+  // Events by place (pie)
+  const placeData = useMemo(() => {
+    const map = {};
+    allRows.forEach((r) => {
+      const key = r.event_place || "Unknown";
+      map[key] = (map[key] || 0) + 1;
+    });
+    return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 6);
+  }, [allRows]);
+
+  // Events by organizer
+  const orgData = useMemo(() => {
+    const map = {};
+    allRows.forEach((r) => {
+      const key = r.organized_by || "Unknown";
+      map[key] = (map[key] || 0) + (r.members_count || 0);
+    });
+    return Object.entries(map).map(([name, members]) => ({ name, members })).sort((a, b) => b.members - a.members).slice(0, 5);
+  }, [allRows]);
+
+  // Top 5 events by members
+  const topEvents = useMemo(() => [...allRows].sort((a, b) => b.members_count - a.members_count).slice(0, 5), [allRows]);
+
+  // Recent 5 events
+  const recentEvents = useMemo(() => [...allRows].sort((a, b) => new Date(b.event_date) - new Date(a.event_date)).slice(0, 5), [allRows]);
+
+  if (totalEvents === 0) {
+    return <div className="empty-state" style={{ padding: 60 }}><CalendarDays size={40} style={{ opacity: 0.3 }} /><p style={{ marginTop: 12 }}>No events recorded yet. Add events to see the dashboard.</p></div>;
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      {/* Stat cards */}
+      <div className="stats-grid">
+        <StatCard icon={CalendarDays} label="Total Events" value={totalEvents} color="#10b981" />
+        <StatCard icon={Users} label="Total Members" value={fmt(totalMembers)} color="#6366f1" />
+        <StatCard icon={TrendingUp} label="Avg Members / Event" value={fmt(avgMembers)} color="#f59e0b" />
+        <StatCard icon={Award} label="Largest Event" value={biggest ? fmt(biggest.members_count) : "—"} color="#ef4444" />
+      </div>
+
+      {/* Charts row */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 20 }}>
+
+        {/* Monthly Members Bar Chart */}
+        <div className="card">
+          <div className="card-body">
+            <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 700 }}>Monthly Members Participated</h3>
+            {monthlyData.length === 0 ? <p className="text-muted">No data</p> : (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={monthlyData} margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--text-muted)" }} />
+                  <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} />
+                  <Tooltip contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} />
+                  <Bar dataKey="members" fill="#10b981" radius={[4, 4, 0, 0]} name="Members" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+
+        {/* Monthly Events Count */}
+        <div className="card">
+          <div className="card-body">
+            <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 700 }}>Monthly Event Count</h3>
+            {monthlyData.length === 0 ? <p className="text-muted">No data</p> : (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={monthlyData} margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--text-muted)" }} />
+                  <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} />
+                  <Tooltip contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} />
+                  <Bar dataKey="events" fill="#6366f1" radius={[4, 4, 0, 0]} name="Events" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+
+        {/* Events by Place Pie */}
+        {placeData.length > 0 && (
+          <div className="card">
+            <div className="card-body">
+              <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 700 }}>Events by Place</h3>
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie data={placeData} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value" nameKey="name" label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`} labelLine={false} fontSize={10}>
+                    {placeData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {/* Members by Organizer */}
+        {orgData.length > 0 && (
+          <div className="card">
+            <div className="card-body">
+              <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 700 }}>Members by Organizer</h3>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={orgData} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis type="number" tick={{ fontSize: 10, fill: "var(--text-muted)" }} />
+                  <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11, fill: "var(--text-muted)" }} />
+                  <Tooltip contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} />
+                  <Bar dataKey="members" radius={[0, 4, 4, 0]} name="Members">
+                    {orgData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom row: Top events + Recent events */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 20 }}>
+
+        {/* Top events by members */}
+        <div className="card">
+          <div className="card-body">
+            <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 700 }}>🏆 Top Events by Members</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {topEvents.map((r, i) => (
+                <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: "var(--surface-2)", borderRadius: 10 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: COLORS[i % COLORS.length], display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 12, flexShrink: 0 }}>{i + 1}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.event_name}</div>
+                    <div className="text-muted" style={{ fontSize: 11 }}>{r.event_place} · {formatDate(r.event_date)}</div>
+                  </div>
+                  <div style={{ fontWeight: 800, fontSize: 14, color: "var(--primary)", flexShrink: 0 }}>{fmt(r.members_count)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Recent events */}
+        <div className="card">
+          <div className="card-body">
+            <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 700 }}>🕒 Recent Events</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {recentEvents.map((r) => (
+                <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: "var(--surface-2)", borderRadius: 10 }}>
+                  <div style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(99,102,241,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <CalendarDays size={18} color="var(--primary)" />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.event_name}</div>
+                    <div className="text-muted" style={{ fontSize: 11 }}>{r.organized_by} · {formatDate(r.event_date)}</div>
+                  </div>
+                  <span style={{ fontWeight: 700, fontSize: 12, padding: "2px 8px", borderRadius: 999, background: "rgba(16,185,129,0.12)", color: "#10b981", flexShrink: 0 }}>{fmt(r.members_count)} members</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const EventReports = () => {
   const { profile } = useAuth();
-  const [tab, setTab] = useState("daily");
+  const [tab, setTab] = useState("dashboard");
   const [loading, setLoading] = useState(false);
 
+  const [allRows, setAllRows] = useState([]);
   const [dailyDate, setDailyDate] = useState(today());
   const [dailyRows, setDailyRows] = useState([]);
-
   const [monthVal, setMonthVal] = useState(thisMonth());
   const [monthRows, setMonthRows] = useState([]);
-
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
   const [customRows, setCustomRows] = useState([]);
-
-  const [allRows, setAllRows] = useState([]);
 
   const load = (setter, params) => {
     setLoading(true);
     fetchEvents(params).then(setter).catch((e) => { console.error(e); }).finally(() => setLoading(false));
   };
+
+  // Always load all events for dashboard
+  useEffect(() => { load(setAllRows, {}); }, []);
 
   useEffect(() => { if (tab === "daily") load(setDailyRows, { startDate: dailyDate, endDate: dailyDate }); }, [tab, dailyDate]);
   useEffect(() => {
@@ -150,9 +357,9 @@ const EventReports = () => {
     load(setMonthRows, { startDate: `${monthVal}-01`, endDate: `${monthVal}-${lastDay}` });
   }, [tab, monthVal]);
   useEffect(() => { if (tab === "custom") load(setCustomRows, { startDate: customStart, endDate: customEnd }); }, [tab, customStart, customEnd]);
-  useEffect(() => { if (tab === "all") load(setAllRows, {}); }, [tab]);
 
   const tabs = [
+    { id: "dashboard", label: "📊 Dashboard" },
     { id: "daily", label: "Daily" },
     { id: "monthly", label: "Monthly" },
     { id: "custom", label: "Custom Range" },
@@ -167,7 +374,7 @@ const EventReports = () => {
     <div className="page">
       <div className="page-header">
         <h1 className="page-title">Event Reports</h1>
-        <p className="page-subtitle">View and export event records</p>
+        <p className="page-subtitle">Dashboard and detailed event records</p>
       </div>
 
       <div className="tabs mb-4">
@@ -175,6 +382,9 @@ const EventReports = () => {
       </div>
 
       {loading && <div className="loading-screen"><div className="spinner"></div></div>}
+
+      {/* Dashboard */}
+      {tab === "dashboard" && !loading && <EventDashboard allRows={allRows} />}
 
       {/* Daily */}
       {tab === "daily" && !loading && (
