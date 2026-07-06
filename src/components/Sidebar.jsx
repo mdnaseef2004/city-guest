@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, UserPlus, ClipboardList, BarChart3,
-  Users, LogOut, X, Bell
+  Users, LogOut, X, Bell, CalendarPlus, CalendarDays
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -11,8 +11,10 @@ const NAV_ITEMS = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard', roles: ['super_admin', 'sub_admin'] },
   { to: '/add-guest', icon: UserPlus, label: 'Add Guest Visit', roles: ['super_admin', 'sub_admin'] },
   { to: '/guests', icon: ClipboardList, label: 'Guest Records', roles: ['super_admin', 'sub_admin'] },
+  { to: '/add-event', icon: CalendarPlus, label: 'Add Event', roles: ['super_admin', 'sub_admin'] },
   { to: '/assignments', icon: Bell, label: 'Assignments', roles: ['super_admin', 'sub_admin'] },
   { to: '/reports', icon: BarChart3, label: 'Reports', roles: ['super_admin'] },
+  { to: '/event-reports', icon: CalendarDays, label: 'Event Reports', roles: ['super_admin'] },
   { to: '/users', icon: Users, label: 'User Management', roles: ['super_admin'] },
 ];
 

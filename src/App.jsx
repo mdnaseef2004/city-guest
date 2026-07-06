@@ -12,6 +12,8 @@ import Reports from './pages/Reports';
 import UserManagement from './pages/UserManagement';
 import Assignments from './pages/Assignments';
 import Notifications from './pages/Notifications';
+import AddEvent from './pages/AddEvent';
+import EventReports from './pages/EventReports';
 
 function App() {
   return (
@@ -33,9 +35,11 @@ function App() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/add-guest" element={<AddGuest />} />
               <Route path="/guests" element={<GuestRecords />} />
+              <Route path="/add-event" element={<AddEvent />} />
               <Route path="/assignments" element={<Assignments />} />
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/reports" element={<Reports />} />
+              <Route path="/event-reports" element={<ProtectedRoute requiredRole="super_admin"><EventReports /></ProtectedRoute>} />
               <Route path="/users" element={<ProtectedRoute requiredRole="super_admin"><UserManagement /></ProtectedRoute>} />
             </Route>
           </Route>
