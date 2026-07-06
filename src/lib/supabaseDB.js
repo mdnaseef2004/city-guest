@@ -413,6 +413,8 @@ export async function getDashboardStats() {
     subAdminPerf,
     superAdminPerf,
     recentPhotos,
+    rawGuests: g,
+    allUsers: u,
   };
 }
 

@@ -1,15 +1,27 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Users, IndianRupee, UserCheck, TrendingUp, Download, FileSpreadsheet } from 'lucide-react';
+import { Users, IndianRupee, UserCheck, TrendingUp, Download, FileSpreadsheet, FileText } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import html2canvas from 'html2canvas';
 import StatsCard from '../components/StatsCard';
 import Modal from '../components/Modal';
+import DateRangePicker from '../components/DateRangePicker';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { getDashboardStats } from '../lib/supabaseDB';
 import { formatDate } from '../utils/dateUtils';
 
 const COLORS = ['#059669', '#10b981', '#34d399', '#0d9488', '#6ee7b7', '#047857'];
+
+const loadImage = (url) => new Promise((resolve, reject) => {
+  const img = new Image();
+  img.crossOrigin = 'Anonymous';
+  img.onload = () => resolve(img);
+  img.onerror = (e) => reject(e);
+  img.src = url;
+});
 
 function exportToExcel(data, filename) {
   const ws = XLSX.utils.json_to_sheet(data);
@@ -28,6 +40,75 @@ function exportToCSV(data, filename) {
   a.click();
 }
 
+async function exportToPDF(data, filename) {
+  if (!data.length) return;
+  const doc = new jsPDF('p', 'pt', 'a4');
+  let logoImg = null;
+  try { logoImg = await loadImage('/IMG_2458.PNG'); } catch (e) {}
+
+  const PAGE_WIDTH = doc.internal.pageSize.getWidth();
+  const MARGIN = 40;
+
+  const drawHeader = () => {
+    let titleY = MARGIN + 25;
+    if (logoImg) {
+      const logoHeight = 40;
+      const logoWidth = logoHeight * (logoImg.width / logoImg.height);
+      doc.addImage(logoImg, 'PNG', (PAGE_WIDTH - logoWidth) / 2, MARGIN, logoWidth, logoHeight);
+      titleY = MARGIN + logoHeight + 20;
+    } else {
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0, 0, 0);
+      doc.text('CITY GUEST', PAGE_WIDTH / 2, MARGIN, { align: 'center' });
+    }
+    const title = filename.replace(/-/g, ' ').toUpperCase();
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text(title, PAGE_WIDTH / 2, titleY, { align: 'center' });
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(1);
+    doc.line(MARGIN, titleY + 15, PAGE_WIDTH - MARGIN, titleY + 15);
+  };
+  
+  // Capture charts if they exist
+  const chartsEl = document.getElementById('perf-charts');
+  let chartsImg = null;
+  let startY = 140;
+
+  if (chartsEl) {
+    try {
+      const canvas = await html2canvas(chartsEl, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      chartsImg = canvas.toDataURL('image/png');
+    } catch (e) {
+      console.error('Failed to capture charts', e);
+    }
+  }
+
+  if (chartsImg) {
+    const imgProps = doc.getImageProperties(chartsImg);
+    const imgWidth = PAGE_WIDTH - (MARGIN * 2);
+    const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+    doc.addImage(chartsImg, 'PNG', MARGIN, startY, imgWidth, imgHeight);
+    startY += imgHeight + 20;
+  }
+
+  const headers = Object.keys(data[0]);
+  const rows = data.map(row => headers.map(h => row[h]));
+
+  autoTable(doc, {
+    startY: startY,
+    head: [headers],
+    body: rows,
+    theme: 'grid',
+    margin: { top: 140, left: MARGIN, right: MARGIN },
+    headStyles: { fillColor: [5, 150, 105], textColor: [255, 255, 255] },
+    didDrawPage: drawHeader
+  });
+
+  doc.save(`${filename}.pdf`);
+}
+
 const ExportButtons = ({ getData, filename }) => (
   <div style={{ display: 'flex', gap: '8px' }}>
     <button className="btn btn-secondary btn-sm" onClick={() => exportToExcel(getData(), filename)} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -35,6 +116,9 @@ const ExportButtons = ({ getData, filename }) => (
     </button>
     <button className="btn btn-secondary btn-sm" onClick={() => exportToCSV(getData(), filename)} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
       <Download size={14} /> CSV
+    </button>
+    <button className="btn btn-secondary btn-sm" onClick={() => exportToPDF(getData(), filename)} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <FileText size={14} /> PDF
     </button>
   </div>
 );
@@ -84,17 +168,74 @@ const PerfTable = ({ rows, fmt, label }) => (
 
 const PerfSection = ({ stats, fmt }) => {
   const [perfTab, setPerfTab] = React.useState('sub');
+  const [dateFilter, setDateFilter] = React.useState('all');
+  const [customStart, setCustomStart] = React.useState('');
+  const [customEnd, setCustomEnd] = React.useState('');
+
   const isSub = perfTab === 'sub';
-  const rows = isSub ? (stats?.subAdminPerf || []) : (stats?.superAdminPerf || []);
+
+  const filterGuests = React.useCallback(() => {
+    let g = stats?.rawGuests || [];
+    if (dateFilter === 'all') return g;
+
+    const now = new Date();
+    if (dateFilter === 'week') {
+      const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+      startOfWeek.setHours(0,0,0,0);
+      return g.filter(x => new Date(x.created_at) >= startOfWeek);
+    }
+    if (dateFilter === 'month') {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      return g.filter(x => new Date(x.created_at) >= startOfMonth);
+    }
+    if (dateFilter === 'custom') {
+      if (!customStart || !customEnd) return g;
+      const start = new Date(customStart + 'T00:00:00.000Z');
+      const end = new Date(customEnd + 'T23:59:59.999Z');
+      return g.filter(x => {
+        const d = new Date(x.created_at);
+        return d >= start && d <= end;
+      });
+    }
+    return g;
+  }, [stats?.rawGuests, dateFilter, customStart, customEnd]);
+
+  const filteredGuests = filterGuests();
+  const u = stats?.allUsers || [];
+
+  const subAdminPerfLocal = u.filter(x => x.role === 'sub_admin').map(x => {
+    const ug = filteredGuests.filter(r => r.created_by === x.id);
+    const last = [...ug].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+    return {
+      name: x.name,
+      totalEntries: ug.length,
+      totalDonations: ug.reduce((s, r) => s + (r.donation_amount || 0), 0),
+      lastEntry: last?.created_at || null,
+    };
+  }).sort((a, b) => b.totalEntries - a.totalEntries);
+
+  const superAdminPerfLocal = u.filter(x => x.role === 'super_admin').map(x => {
+    const ug = filteredGuests.filter(r => r.created_by === x.id);
+    const last = [...ug].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+    return {
+      name: x.name,
+      totalEntries: ug.length,
+      totalDonations: ug.reduce((s, r) => s + (r.donation_amount || 0), 0),
+      lastEntry: last?.created_at || null,
+    };
+  }).sort((a, b) => b.totalEntries - a.totalEntries);
+
+  const rows = isSub ? subAdminPerfLocal : superAdminPerfLocal;
   const label = isSub ? 'Sub Admin' : 'Super Admin';
   const barColor = isSub ? '#8b5cf6' : '#0ea5e9';
   const filename = isSub ? 'subadmin-performance' : 'superadmin-performance';
+  const displayFilename = dateFilter === 'all' ? filename : `${filename}-${dateFilter}`;
 
   return (
     <div style={{ marginTop: 24 }}>
       {/* Chart */}
       {rows.length > 0 && (
-        <div className="charts-grid" style={{ marginBottom: 0 }}>
+        <div id="perf-charts" className="charts-grid" style={{ marginBottom: 0, padding: '16px', background: 'var(--background)' }}>
           <div className="card">
             <div className="card-header"><h3 className="card-title">Guests Handled – {label}</h3></div>
             <div className="card-body">
@@ -128,24 +269,43 @@ const PerfSection = ({ stats, fmt }) => {
 
       {/* Table with tabs */}
       <div className="card mt-4">
-        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-          <div style={{ display: 'flex', gap: 4, background: 'var(--background)', padding: 4, borderRadius: 12 }}>
-            <button style={TAB_STYLES(perfTab === 'sub')} onClick={() => setPerfTab('sub')}>
-              👤 Sub Admin
-            </button>
-            <button style={TAB_STYLES(perfTab === 'super')} onClick={() => setPerfTab('super')}>
-              👑 Super Admin
-            </button>
+        <div className="card-header" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+            <div style={{ display: 'flex', gap: 4, background: 'var(--background)', padding: 4, borderRadius: 12 }}>
+              <button style={TAB_STYLES(perfTab === 'sub')} onClick={() => setPerfTab('sub')}>
+                👤 Sub Admin
+              </button>
+              <button style={TAB_STYLES(perfTab === 'super')} onClick={() => setPerfTab('super')}>
+                👑 Super Admin
+              </button>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <select className="form-input no-icon" value={dateFilter} onChange={e => setDateFilter(e.target.value)} style={{ padding: '6px 12px', borderRadius: 8, minWidth: 130 }}>
+                <option value="all">All Time</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="custom">Custom Range</option>
+              </select>
+              
+              {dateFilter === 'custom' && (
+                <DateRangePicker 
+                  startDate={customStart} endDate={customEnd} 
+                  onStartDateChange={setCustomStart} onEndDateChange={setCustomEnd} 
+                />
+              )}
+              
+              <ExportButtons
+                getData={() => rows.map(r => ({
+                  [label]: r.name,
+                  'Total Entries': r.totalEntries,
+                  'Total Donations (₹)': r.totalDonations,
+                  'Last Entry': r.lastEntry ? formatDate(r.lastEntry) : '—',
+                }))}
+                filename={displayFilename}
+              />
+            </div>
           </div>
-          <ExportButtons
-            getData={() => rows.map(r => ({
-              [label]: r.name,
-              'Total Entries': r.totalEntries,
-              'Total Donations (₹)': r.totalDonations,
-              'Last Entry': r.lastEntry ? formatDate(r.lastEntry) : '—',
-            }))}
-            filename={filename}
-          />
         </div>
         <div className="card-body" style={{ overflowX: 'auto', padding: 0 }}>
           <div style={{ padding: '0 8px' }}>
