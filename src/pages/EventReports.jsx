@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Download, FileSpreadsheet, FileText, CalendarDays, Users, Building2, TrendingUp, Award } from "lucide-react";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
@@ -41,10 +41,11 @@ function mapExport(rows) {
     "Handled By": r.handled_by || "",
     "Remarks": r.remarks || "",
     "Entered By": r.profiles?.name || "",
+    "Photo": r.photo_url ? "Yes" : "No",
   }));
 }
 
-async function exportToPDF(data, filename, title) {
+async function exportToPDF(data, filename, title, rows) {
   if (!data.length) return;
   const doc = new jsPDF("l", "pt", "a4");
   let logoImg = null;
@@ -68,13 +69,39 @@ async function exportToPDF(data, filename, title) {
   };
   const keys = Object.keys(data[0]);
   const bodyData = data.map((r) => keys.map((k) => String(r[k] ?? "")));
+
+  // Pre-load photos
+  const photoMap = {};
+  if (rows) {
+    await Promise.allSettled(
+      rows.filter(r => r.photo_url).map(async (r) => {
+        try { photoMap[r.id] = await loadImage(r.photo_url); } catch (e) {}
+      })
+    );
+  }
+
   autoTable(doc, {
     startY: 140, head: [keys], body: bodyData,
     margin: { top: 140, left: MARGIN, right: MARGIN },
     theme: "grid",
     headStyles: { fillColor: [5, 150, 105], textColor: [255, 255, 255], fontSize: 8 },
-    bodyStyles: { fontSize: 8 },
+    bodyStyles: { fontSize: 8, minCellHeight: rows ? 50 : 14 },
     didDrawPage: drawHeader,
+    didDrawCell: rows ? (hookData) => {
+      if (hookData.section !== "body") return;
+      const row = rows[hookData.row.index];
+      if (!row || !photoMap[row.id]) return;
+      // Draw photo in the last column
+      if (hookData.column.index === keys.length - 1) {
+        const img = photoMap[row.id];
+        const cellH = hookData.cell.height - 4;
+        const cellW = hookData.cell.width - 4;
+        const aspect = img.width / img.height;
+        const drawH = Math.min(cellH, 45);
+        const drawW = drawH * aspect;
+        doc.addImage(img, "JPEG", hookData.cell.x + 2, hookData.cell.y + 2, Math.min(drawW, cellW - 4), drawH);
+      }
+    } : undefined,
   });
   doc.save(`${filename}.pdf`);
 }
@@ -96,9 +123,9 @@ function exportToCSV(data, filename) {
   a.download = `${filename}.csv`; a.click();
 }
 
-const ExportButtons = ({ getData, filename, title }) => (
+const ExportButtons = ({ getData, getRows, filename, title }) => (
   <div style={{ display: "flex", gap: 8 }}>
-    <button className="btn btn-secondary btn-sm" onClick={() => exportToPDF(getData(), filename, title)} style={{ display: "flex", alignItems: "center", gap: 6 }}><FileText size={14} /> PDF</button>
+    <button className="btn btn-secondary btn-sm" onClick={() => exportToPDF(getData(), filename, title, getRows ? getRows() : undefined)} style={{ display: "flex", alignItems: "center", gap: 6 }}><FileText size={14} /> PDF</button>
     <button className="btn btn-secondary btn-sm" onClick={() => exportToExcel(getData(), filename)} style={{ display: "flex", alignItems: "center", gap: 6 }}><FileSpreadsheet size={14} /> Excel</button>
     <button className="btn btn-secondary btn-sm" onClick={() => exportToCSV(getData(), filename)} style={{ display: "flex", alignItems: "center", gap: 6 }}><Download size={14} /> CSV</button>
   </div>
@@ -108,9 +135,14 @@ const EventTable = ({ rows }) => (
   <div className="card"><div className="card-body" style={{ padding: 0, overflowX: "auto" }}>
     {rows.length === 0 ? <div className="empty-state" style={{ padding: 40 }}><p>No events found.</p></div> : (
       <table className="table"><thead><tr>
-        <th>Event Name</th><th>Event Place</th><th>Members</th><th>Organized By</th><th>Event Date</th><th>Handled By</th><th>Entered By</th><th>Remarks</th>
+        <th>Photo</th><th>Event Name</th><th>Event Place</th><th>Members</th><th>Organized By</th><th>Event Date</th><th>Handled By</th><th>Entered By</th><th>Remarks</th>
       </tr></thead>
         <tbody>{rows.map((r) => <tr key={r.id}>
+          <td>
+            {r.photo_url
+              ? <img src={r.photo_url} alt="event" style={{ width: 52, height: 40, objectFit: "cover", borderRadius: 6, border: "1px solid var(--border)" }} />
+              : <div style={{ width: 52, height: 40, borderRadius: 6, background: "var(--surface-2)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "var(--text-muted)" }}>No photo</div>}
+          </td>
           <td><strong>{r.event_name}</strong></td>
           <td>{r.event_place}</td>
           <td><span style={{ fontWeight: 700, color: "var(--primary)" }}>{fmt(r.members_count)}</span></td>
@@ -395,7 +427,7 @@ const EventReports = () => {
               <input type="date" className="form-input no-icon" value={dailyDate} onChange={(e) => setDailyDate(e.target.value)} style={{ width: "auto" }} />
             </div>
             <div style={{ marginTop: "auto" }}>
-              <ExportButtons getData={() => mapExport(dailyRows)} filename={`Event_Daily_${dailyDate}`} title={`Daily Event Report - ${formatDate(dailyDate)}`} />
+              <ExportButtons getData={() => mapExport(dailyRows)} getRows={() => dailyRows} filename={`Event_Daily_${dailyDate}`} title={`Daily Event Report - ${formatDate(dailyDate)}`} />
             </div>
           </div></div>
           <div className="stats-grid mb-4">
@@ -415,7 +447,7 @@ const EventReports = () => {
               <input type="month" className="form-input no-icon" value={monthVal} onChange={(e) => setMonthVal(e.target.value)} style={{ width: "auto" }} />
             </div>
             <div style={{ marginTop: "auto" }}>
-              <ExportButtons getData={() => mapExport(monthRows)} filename={`Event_Monthly_${monthVal}`} title={`Monthly Event Report - ${new Date(monthVal + "-01").toLocaleString("en-US", { month: "long", year: "numeric" })}`} />
+              <ExportButtons getData={() => mapExport(monthRows)} getRows={() => monthRows} filename={`Event_Monthly_${monthVal}`} title={`Monthly Event Report - ${new Date(monthVal + "-01").toLocaleString("en-US", { month: "long", year: "numeric" })}`} />
             </div>
           </div></div>
           <div className="stats-grid mb-4">
@@ -431,7 +463,7 @@ const EventReports = () => {
         <div>
           <div className="card mb-4"><div className="card-body" style={{ display: "flex", alignItems: "flex-end", gap: 16, flexWrap: "wrap" }}>
             <DateRangePicker startDate={customStart} endDate={customEnd} onStartDateChange={setCustomStart} onEndDateChange={setCustomEnd} label="Date Range" />
-            <ExportButtons getData={() => mapExport(customRows)} filename="Event_Custom_Report" title="Custom Date Range Event Report" />
+            <ExportButtons getData={() => mapExport(customRows)} getRows={() => customRows} filename="Event_Custom_Report" title="Custom Date Range Event Report" />
           </div></div>
           <div className="stats-grid mb-4">
             {summaryCard("Total Events", customRows.length)}
@@ -445,7 +477,7 @@ const EventReports = () => {
       {tab === "all" && !loading && (
         <div>
           <div className="card mb-4"><div className="card-body" style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
-            <ExportButtons getData={() => mapExport(allRows)} filename="All_Events_Report" title="All Events Report" />
+            <ExportButtons getData={() => mapExport(allRows)} getRows={() => allRows} filename="All_Events_Report" title="All Events Report" />
           </div></div>
           <div className="stats-grid mb-4">
             {summaryCard("Total Events", allRows.length)}

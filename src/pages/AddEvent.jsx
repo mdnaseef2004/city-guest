@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
-import { Building2, MapPin, Users, Briefcase, User, MessageSquare } from "lucide-react";
+﻿import React, { useState, useEffect, useRef } from "react";
+import { Building2, MapPin, Users, Briefcase, User, MessageSquare, Camera, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
-import { getUsers } from "../lib/supabaseDB";
+import { getUsers, uploadGuestPhoto } from "../lib/supabaseDB";
 
 const EMPTY = { event_name: "", event_place: "", members_count: "", organized_by: "", event_date: "", handled_by: "", remarks: "" };
 
@@ -13,9 +13,25 @@ const AddEvent = () => {
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState([]);
 
+  // Photo state
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const photoInputRef = useRef(null);
+
   useEffect(() => { if (profile?.role === "super_admin") getUsers().then(setUsers); }, [profile]);
 
   const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 20 * 1024 * 1024) { toast.error("Photo must be less than 20MB"); return; }
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+    e.target.value = "";
+  };
+
+  const removePhoto = () => { setPhotoFile(null); setPhotoPreview(null); };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -26,17 +42,32 @@ const AddEvent = () => {
     if (!form.event_date) { toast.error("Event Date is required"); return; }
     const handledBy = profile?.role === "super_admin" ? form.handled_by.trim() : (profile?.name || "");
     if (!handledBy) { toast.error("Handled By is required"); return; }
+
     setLoading(true);
     try {
+      let photo_url = null;
+      if (photoFile) {
+        toast.loading("Uploading photo...", { id: "photo-up" });
+        photo_url = await uploadGuestPhoto(photoFile);
+        toast.success("Photo uploaded!", { id: "photo-up" });
+      }
+
       const { error } = await supabase.from("events").insert({
-        event_name: form.event_name.trim(), event_place: form.event_place.trim(),
-        members_count: Number(form.members_count), organized_by: form.organized_by.trim(),
-        event_date: form.event_date, handled_by: handledBy,
-        remarks: form.remarks.trim() || null, created_by: profile.id,
+        event_name: form.event_name.trim(),
+        event_place: form.event_place.trim(),
+        members_count: Number(form.members_count),
+        organized_by: form.organized_by.trim(),
+        event_date: form.event_date,
+        handled_by: handledBy,
+        remarks: form.remarks.trim() || null,
+        photo_url,
+        created_by: profile.id,
       });
       if (error) throw error;
       toast.success("Event added successfully!");
       setForm(EMPTY);
+      setPhotoFile(null);
+      setPhotoPreview(null);
     } catch (err) { toast.error(err.message); }
     finally { setLoading(false); }
   };
@@ -52,6 +83,8 @@ const AddEvent = () => {
           <form onSubmit={handleSubmit}>
             <div className="form-grid">
               <h4 style={{ gridColumn: "1 / -1", color: "var(--primary)", margin: 0, marginBottom: 4 }}>Event Details</h4>
+
+              {/* Event Name */}
               <div className="form-group form-group-full">
                 <label className="form-label" htmlFor="event_name">Event Name <span className="required">*</span></label>
                 <div className="input-wrap">
@@ -60,6 +93,8 @@ const AddEvent = () => {
                     value={form.event_name} onChange={set("event_name")} disabled={loading} required />
                 </div>
               </div>
+
+              {/* Event Place */}
               <div className="form-group">
                 <label className="form-label" htmlFor="event_place">Event Place <span className="required">*</span></label>
                 <div className="input-wrap">
@@ -68,11 +103,15 @@ const AddEvent = () => {
                     value={form.event_place} onChange={set("event_place")} disabled={loading} required />
                 </div>
               </div>
+
+              {/* Event Date */}
               <div className="form-group">
                 <label className="form-label" htmlFor="event_date">Event Date <span className="required">*</span></label>
                 <input id="event_date" type="date" className="form-input no-icon"
                   value={form.event_date} onChange={set("event_date")} disabled={loading} required />
               </div>
+
+              {/* Members Participated */}
               <div className="form-group">
                 <label className="form-label" htmlFor="members_count">Members Participated <span className="required">*</span></label>
                 <div className="input-wrap">
@@ -81,6 +120,8 @@ const AddEvent = () => {
                     min="1" value={form.members_count} onChange={set("members_count")} disabled={loading} required />
                 </div>
               </div>
+
+              {/* Organized By */}
               <div className="form-group">
                 <label className="form-label" htmlFor="organized_by">Organized By <span className="required">*</span></label>
                 <div className="input-wrap">
@@ -89,6 +130,8 @@ const AddEvent = () => {
                     value={form.organized_by} onChange={set("organized_by")} disabled={loading} required />
                 </div>
               </div>
+
+              {/* Handled By */}
               <div className="form-group">
                 <label className="form-label" htmlFor="handled_by">Handled By <span className="required">*</span></label>
                 {profile?.role === "super_admin" ? (
@@ -104,6 +147,45 @@ const AddEvent = () => {
                   </div>
                 )}
               </div>
+
+              {/* Event Photo Upload */}
+              <div className="form-group form-group-full">
+                <label className="form-label">Event Photo <span style={{ color: "var(--text-muted)", fontWeight: 400, fontSize: "0.8rem" }}>(optional)</span></label>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
+                  {/* Preview */}
+                  <div style={{
+                    width: 110, height: 80, borderRadius: 10, overflow: "hidden",
+                    background: "var(--surface-2)", border: "2px dashed var(--border)",
+                    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0
+                  }}>
+                    {photoPreview
+                      ? <img src={photoPreview} alt="Preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      : <Camera size={24} color="var(--text-muted)" />}
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <label style={{
+                      display: "inline-flex", alignItems: "center", gap: 8,
+                      padding: "8px 16px", background: "var(--primary)", color: "white",
+                      borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600
+                    }}>
+                      <Camera size={14} /> {photoPreview ? "Change Photo" : "Upload Photo"}
+                      <input ref={photoInputRef} type="file" accept="image/*" style={{ display: "none" }}
+                        onChange={handlePhotoChange} disabled={loading} />
+                    </label>
+                    {photoPreview && (
+                      <button type="button" onClick={removePhoto}
+                        className="btn btn-ghost btn-sm" style={{ color: "var(--danger)", display: "flex", alignItems: "center", gap: 6 }}
+                        disabled={loading}>
+                        <X size={13} /> Remove Photo
+                      </button>
+                    )}
+                    <p className="text-muted" style={{ fontSize: 11, margin: 0 }}>Max 20MB. JPG, PNG supported.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Remarks */}
               <div className="form-group form-group-full">
                 <label className="form-label" htmlFor="remarks">Remarks</label>
                 <div className="input-wrap" style={{ alignItems: "flex-start" }}>
@@ -113,8 +195,9 @@ const AddEvent = () => {
                 </div>
               </div>
             </div>
+
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 24 }}>
-              <button type="button" className="btn btn-secondary" onClick={() => setForm(EMPTY)} disabled={loading}>Clear</button>
+              <button type="button" className="btn btn-secondary" onClick={() => { setForm(EMPTY); removePhoto(); }} disabled={loading}>Clear</button>
               <button type="submit" className="btn btn-primary" disabled={loading}>{loading ? "Saving..." : "Save Event"}</button>
             </div>
           </form>
