@@ -1,7 +1,7 @@
 import React, { useState, useEffect, createContext, useRef } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import { Moon, Sun, Menu, Camera, Bell, AlertTriangle } from 'lucide-react';
+import { MoonStar, SunMedium, AlignJustify, Camera, BellRing, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import Modal from './Modal';
 import { updateUser, uploadAvatar, subscribeToAssignments, subscribeToReminders, savePushSubscription, getNotifications, subscribeToNotifications } from '../lib/supabaseDB';
@@ -253,7 +253,7 @@ export default function Layout() {
               background: 'var(--primary-light)', display: 'flex',
               alignItems: 'center', justifyContent: 'center', color: 'var(--primary)',
             }}>
-              <Bell size={20} />
+              <BellRing size={20} strokeWidth={1.8} />
             </div>
             <div>
               <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', marginBottom: 3 }}>
@@ -382,7 +382,7 @@ export default function Layout() {
                 style={{ display: 'none' }}
                 id="menu-btn"
               >
-                <Menu size={20} />
+                <AlignJustify size={20} strokeWidth={1.8} />
               </button>
               <style>{`@media(max-width:768px){#menu-btn{display:flex!important}}`}</style>
             </div>
@@ -396,7 +396,7 @@ export default function Layout() {
                   title="Notifications"
                   onClick={() => navigate('/notifications')}
                 >
-                  <Bell size={18} style={{ animation: notifFlash ? 'bellRing 0.5s ease 3' : 'none' }} />
+                  <BellRing size={18} strokeWidth={1.8} style={{ animation: notifFlash ? 'bellRing 0.5s ease 3' : 'none' }} />
                   {unreadCount > 0 && (
                     <span style={{
                       position: 'absolute', top: 2, right: 2,
@@ -412,7 +412,7 @@ export default function Layout() {
               </div>
 
               <button className="btn btn-ghost btn-icon" onClick={toggleDark} title="Toggle dark mode">
-                {dark ? <Sun size={18} /> : <Moon size={18} />}
+                {dark ? <SunMedium size={19} strokeWidth={1.8} /> : <MoonStar size={18} strokeWidth={1.8} />}
               </button>
 
               <div
@@ -438,9 +438,9 @@ export default function Layout() {
                   )}
                 </div>
                 <div style={{ lineHeight: 1.3 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>{profile?.name || 'User'}</div>
-                  <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
-                    {profile?.role === 'super_admin' ? 'Super Admin' : 'Sub Admin'}
+                  <div style={{ fontSize: 13.5, fontWeight: 700, letterSpacing: '-0.01em' }}>{profile?.name || 'User'}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500, marginTop: 1 }}>
+                    {profile?.role === 'super_admin' ? '⚙️ Super Admin' : '👤 Sub Admin'}
                   </div>
                 </div>
               </div>
@@ -499,7 +499,7 @@ export default function Layout() {
               boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', maxWidth: 400, width: '90%',
               animation: 'popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
             }}>
-              <AlertTriangle size={64} color="#ef4444" style={{ margin: '0 auto 16px', animation: 'wobble 1s infinite' }} />
+              <ShieldAlert size={64} color="#ef4444" style={{ margin: '0 auto 16px', animation: 'wobble 1s infinite' }} strokeWidth={1.5} />
               <h2 style={{ fontFamily: 'var(--font-heading)', color: '#0f172a', fontSize: 24, fontWeight: 800, marginBottom: 8 }}>URGENT ASSIGNMENT</h2>
               <p style={{ color: '#64748b', fontSize: 16, marginBottom: 24 }}>
                 <strong>{urgentGuest}</strong> has been assigned to you. This requires your immediate attention!
