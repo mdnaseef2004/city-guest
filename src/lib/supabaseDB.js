@@ -183,7 +183,7 @@ export async function uploadGuestPhoto(file) {
 
 // ── Guests ────────────────────────────────────────────────────────────────────
 
-export async function addGuest({ guest_name, phone_number, occupation, photo_url, place, district, state, country, is_international, purpose, donation_amount, picked_from, picked_date, picked_time, guest_returned, return_date, return_time, handled_by, remarks, visits }) {
+export async function addGuest({ guest_name, phone_number, occupation, photo_url, place, district, state, country, is_international, purpose, donation_amount, receipt_no, picked_from, picked_date, picked_time, guest_returned, return_date, return_time, handled_by, remarks, visits }) {
   const { data: { user } } = await supabase.auth.getUser();
   
   // 1. Insert into guest_visits
