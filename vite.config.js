@@ -18,10 +18,16 @@ export default defineConfig({
     },
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          ui: ['lucide-react', 'react-hot-toast'],
-          utils: ['date-fns', 'xlsx', 'jspdf', 'html2canvas', 'recharts']
+        manualChunks: (id) => {
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom') || id.includes('node_modules/react-router-dom')) {
+            return 'vendor';
+          }
+          if (id.includes('node_modules/lucide-react') || id.includes('node_modules/react-hot-toast')) {
+            return 'ui';
+          }
+          if (id.includes('node_modules/date-fns') || id.includes('node_modules/xlsx') || id.includes('node_modules/jspdf') || id.includes('node_modules/html2canvas') || id.includes('node_modules/recharts')) {
+            return 'utils';
+          }
         }
       }
     }
