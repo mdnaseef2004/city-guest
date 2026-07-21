@@ -22,7 +22,7 @@ const NAV_ITEMS = [
   { to: '/add-event',     icon: CalendarPlus2,       label: 'Add Event',        roles: ['super_admin', 'sub_admin'] },
   { to: '/assignments',   icon: BellDot,             label: 'Assignments',      roles: ['super_admin', 'sub_admin'] },
   { to: '/reports',       icon: ChartNoAxesCombined, label: 'Reports',          roles: ['super_admin'] },
-  { to: '/event-reports', icon: CalendarRange,       label: 'Event Reports',    roles: ['super_admin'] },
+  { to: '/event-reports', icon: CalendarRange,       label: 'Event Reports',    roles: ['super_admin', 'sub_admin'] },
   { to: '/users',         icon: UsersRound,          label: 'User Management',  roles: ['super_admin'] },
 ];
 

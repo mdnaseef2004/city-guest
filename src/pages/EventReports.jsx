@@ -22,10 +22,13 @@ const loadImage = (url) => new Promise((resolve, reject) => {
   img.onload = () => resolve(img); img.onerror = (e) => reject(e); img.src = url;
 });
 
-async function fetchEvents({ startDate, endDate } = {}) {
+async function fetchEvents({ startDate, endDate, profile } = {}) {
   let q = supabase.from("events").select("*, profiles:created_by(name)").order("event_date", { ascending: false });
   if (startDate) q = q.gte("event_date", startDate);
   if (endDate) q = q.lte("event_date", endDate);
+  if (profile?.role === 'sub_admin') {
+    q = q.eq("created_by", profile.id);
+  }
   const { data, error } = await q;
   if (error) throw error;
   return data || [];
@@ -41,11 +44,10 @@ function mapExport(rows) {
     "Handled By": r.handled_by || "",
     "Remarks": r.remarks || "",
     "Entered By": r.profiles?.name || "",
-    "Photo": r.photo_url ? "Yes" : "No",
   }));
 }
 
-async function exportToPDF(data, filename, title, rows) {
+async function exportToPDF(data, filename, title) {
   if (!data.length) return;
   const doc = new jsPDF("l", "pt", "a4");
   let logoImg = null;
@@ -70,38 +72,13 @@ async function exportToPDF(data, filename, title, rows) {
   const keys = Object.keys(data[0]);
   const bodyData = data.map((r) => keys.map((k) => String(r[k] ?? "")));
 
-  // Pre-load photos
-  const photoMap = {};
-  if (rows) {
-    await Promise.allSettled(
-      rows.filter(r => r.photo_url).map(async (r) => {
-        try { photoMap[r.id] = await loadImage(r.photo_url); } catch (e) {}
-      })
-    );
-  }
-
   autoTable(doc, {
     startY: 140, head: [keys], body: bodyData,
     margin: { top: 140, left: MARGIN, right: MARGIN },
     theme: "grid",
     headStyles: { fillColor: [5, 150, 105], textColor: [255, 255, 255], fontSize: 8 },
-    bodyStyles: { fontSize: 8, minCellHeight: rows ? 50 : 14 },
+    bodyStyles: { fontSize: 8, minCellHeight: 14 },
     didDrawPage: drawHeader,
-    didDrawCell: rows ? (hookData) => {
-      if (hookData.section !== "body") return;
-      const row = rows[hookData.row.index];
-      if (!row || !photoMap[row.id]) return;
-      // Draw photo in the last column
-      if (hookData.column.index === keys.length - 1) {
-        const img = photoMap[row.id];
-        const cellH = hookData.cell.height - 4;
-        const cellW = hookData.cell.width - 4;
-        const aspect = img.width / img.height;
-        const drawH = Math.min(cellH, 45);
-        const drawW = drawH * aspect;
-        doc.addImage(img, "JPEG", hookData.cell.x + 2, hookData.cell.y + 2, Math.min(drawW, cellW - 4), drawH);
-      }
-    } : undefined,
   });
   doc.save(`${filename}.pdf`);
 }
@@ -123,9 +100,9 @@ function exportToCSV(data, filename) {
   a.download = `${filename}.csv`; a.click();
 }
 
-const ExportButtons = ({ getData, getRows, filename, title }) => (
+const ExportButtons = ({ getData, filename, title }) => (
   <div style={{ display: "flex", gap: 8 }}>
-    <button className="btn btn-secondary btn-sm" onClick={() => exportToPDF(getData(), filename, title, getRows ? getRows() : undefined)} style={{ display: "flex", alignItems: "center", gap: 6 }}><FileText size={14} /> PDF</button>
+    <button className="btn btn-secondary btn-sm" onClick={() => exportToPDF(getData(), filename, title)} style={{ display: "flex", alignItems: "center", gap: 6 }}><FileText size={14} /> PDF</button>
     <button className="btn btn-secondary btn-sm" onClick={() => exportToExcel(getData(), filename)} style={{ display: "flex", alignItems: "center", gap: 6 }}><FileSpreadsheet size={14} /> Excel</button>
     <button className="btn btn-secondary btn-sm" onClick={() => exportToCSV(getData(), filename)} style={{ display: "flex", alignItems: "center", gap: 6 }}><Download size={14} /> CSV</button>
   </div>
@@ -375,20 +352,20 @@ const EventReports = () => {
 
   const load = (setter, params) => {
     setLoading(true);
-    fetchEvents(params).then(setter).catch((e) => { console.error(e); }).finally(() => setLoading(false));
+    fetchEvents({ ...params, profile }).then(setter).catch((e) => { console.error(e); }).finally(() => setLoading(false));
   };
 
   // Always load all events for dashboard
-  useEffect(() => { load(setAllRows, {}); }, []);
+  useEffect(() => { load(setAllRows, {}); }, [profile]);
 
-  useEffect(() => { if (tab === "daily") load(setDailyRows, { startDate: dailyDate, endDate: dailyDate }); }, [tab, dailyDate]);
+  useEffect(() => { if (tab === "daily") load(setDailyRows, { startDate: dailyDate, endDate: dailyDate }); }, [tab, dailyDate, profile]);
   useEffect(() => {
     if (tab !== "monthly") return;
     const [yyyy, mm] = monthVal.split("-");
     const lastDay = new Date(yyyy, mm, 0).getDate();
     load(setMonthRows, { startDate: `${monthVal}-01`, endDate: `${monthVal}-${lastDay}` });
-  }, [tab, monthVal]);
-  useEffect(() => { if (tab === "custom") load(setCustomRows, { startDate: customStart, endDate: customEnd }); }, [tab, customStart, customEnd]);
+  }, [tab, monthVal, profile]);
+  useEffect(() => { if (tab === "custom") load(setCustomRows, { startDate: customStart, endDate: customEnd }); }, [tab, customStart, customEnd, profile]);
 
   const tabs = [
     { id: "dashboard", label: "📊 Dashboard" },
@@ -427,7 +404,7 @@ const EventReports = () => {
               <input type="date" className="form-input no-icon" value={dailyDate} onChange={(e) => setDailyDate(e.target.value)} style={{ width: "auto" }} />
             </div>
             <div style={{ marginTop: "auto" }}>
-              <ExportButtons getData={() => mapExport(dailyRows)} getRows={() => dailyRows} filename={`Event_Daily_${dailyDate}`} title={`Daily Event Report - ${formatDate(dailyDate)}`} />
+              <ExportButtons getData={() => mapExport(dailyRows)} filename={`Event_Daily_${dailyDate}`} title={`Daily Event Report - ${formatDate(dailyDate)}`} />
             </div>
           </div></div>
           <div className="stats-grid mb-4">
@@ -447,7 +424,7 @@ const EventReports = () => {
               <input type="month" className="form-input no-icon" value={monthVal} onChange={(e) => setMonthVal(e.target.value)} style={{ width: "auto" }} />
             </div>
             <div style={{ marginTop: "auto" }}>
-              <ExportButtons getData={() => mapExport(monthRows)} getRows={() => monthRows} filename={`Event_Monthly_${monthVal}`} title={`Monthly Event Report - ${new Date(monthVal + "-01").toLocaleString("en-US", { month: "long", year: "numeric" })}`} />
+              <ExportButtons getData={() => mapExport(monthRows)} filename={`Event_Monthly_${monthVal}`} title={`Monthly Event Report - ${new Date(monthVal + "-01").toLocaleString("en-US", { month: "long", year: "numeric" })}`} />
             </div>
           </div></div>
           <div className="stats-grid mb-4">
@@ -463,7 +440,7 @@ const EventReports = () => {
         <div>
           <div className="card mb-4"><div className="card-body" style={{ display: "flex", alignItems: "flex-end", gap: 16, flexWrap: "wrap" }}>
             <DateRangePicker startDate={customStart} endDate={customEnd} onStartDateChange={setCustomStart} onEndDateChange={setCustomEnd} label="Date Range" />
-            <ExportButtons getData={() => mapExport(customRows)} getRows={() => customRows} filename="Event_Custom_Report" title="Custom Date Range Event Report" />
+            <ExportButtons getData={() => mapExport(customRows)} filename="Event_Custom_Report" title="Custom Date Range Event Report" />
           </div></div>
           <div className="stats-grid mb-4">
             {summaryCard("Total Events", customRows.length)}
@@ -477,7 +454,7 @@ const EventReports = () => {
       {tab === "all" && !loading && (
         <div>
           <div className="card mb-4"><div className="card-body" style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
-            <ExportButtons getData={() => mapExport(allRows)} getRows={() => allRows} filename="All_Events_Report" title="All Events Report" />
+            <ExportButtons getData={() => mapExport(allRows)} filename="All_Events_Report" title="All Events Report" />
           </div></div>
           <div className="stats-grid mb-4">
             {summaryCard("Total Events", allRows.length)}

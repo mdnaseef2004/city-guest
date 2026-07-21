@@ -80,9 +80,7 @@ function App() {
                 <Suspense fallback={<PageLoader />}><Reports /></Suspense>
               } />
               <Route path="/event-reports" element={
-                <ProtectedRoute requiredRole="super_admin">
-                  <Suspense fallback={<PageLoader />}><EventReports /></Suspense>
-                </ProtectedRoute>
+                <Suspense fallback={<PageLoader />}><EventReports /></Suspense>
               } />
               <Route path="/users" element={
                 <ProtectedRoute requiredRole="super_admin">
