@@ -1,14 +1,14 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard,
-  UserRoundPlus,
-  BookOpenText,
-  CalendarPlus2,
-  BellDot,
-  ChartNoAxesCombined,
+  LayoutGrid,
+  UserPlus,
+  Database,
+  CalendarDays,
+  BellRing,
+  PieChart,
   CalendarRange,
-  UsersRound,
+  Users,
   LogOut,
   X,
 } from 'lucide-react';
@@ -16,14 +16,14 @@ import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
 const NAV_ITEMS = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard', roles: ['super_admin', 'sub_admin'] },
-  { to: '/add-guest', icon: UserRoundPlus, label: 'Add Guest Visit', roles: ['super_admin', 'sub_admin'] },
-  { to: '/guests', icon: BookOpenText, label: 'Guest Records', roles: ['super_admin', 'sub_admin'] },
-  { to: '/add-event', icon: CalendarPlus2, label: 'Add Event', roles: ['super_admin', 'sub_admin'] },
-  { to: '/assignments', icon: BellDot, label: 'Assignments', roles: ['super_admin', 'sub_admin'] },
-  { to: '/reports', icon: ChartNoAxesCombined, label: 'Reports', roles: ['super_admin'] },
+  { to: '/', icon: LayoutGrid, label: 'Dashboard', roles: ['super_admin', 'sub_admin'] },
+  { to: '/add-guest', icon: UserPlus, label: 'Add Guest Visit', roles: ['super_admin', 'sub_admin'] },
+  { to: '/guests', icon: Database, label: 'Guest Records', roles: ['super_admin', 'sub_admin'] },
+  { to: '/add-event', icon: CalendarDays, label: 'Add Event', roles: ['super_admin', 'sub_admin'] },
+  { to: '/assignments', icon: BellRing, label: 'Assignments', roles: ['super_admin', 'sub_admin'] },
+  { to: '/reports', icon: PieChart, label: 'Reports', roles: ['super_admin'] },
   { to: '/event-reports', icon: CalendarRange, label: 'Event Reports', roles: ['super_admin', 'sub_admin'] },
-  { to: '/users', icon: UsersRound, label: 'User Management', roles: ['super_admin'] },
+  { to: '/users', icon: Users, label: 'User Management', roles: ['super_admin'] },
 ];
 
 export default function Sidebar({ isOpen, onClose, pendingCount = 0 }) {

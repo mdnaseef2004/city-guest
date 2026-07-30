@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, X, Pencil, Trash2, ChevronLeft, ChevronRight, Plus, Map, Download, Upload, MessageSquare, FileSpreadsheet, FileText, Camera, UserCircle } from 'lucide-react';
+import { Search, X, Pencil, Trash, ChevronLeft, ChevronRight, Plus, Compass, Download, Upload, MessageCircle, FileSpreadsheet, FileText, Camera, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import ImageCropper from '../components/ImageCropper';
@@ -639,7 +639,7 @@ Markaz Knowledge City`;
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--surface-2)', overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {r.photo_url ? <img src={r.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <UserCircle size={20} color="var(--text-muted)" />}
+                          {r.photo_url ? <img src={r.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <User size={20} color="var(--text-muted)" />}
                         </div>
                         <div>
                           <strong>{r.guest_name}</strong>
@@ -683,7 +683,7 @@ Markaz Knowledge City`;
                         <button className="btn btn-primary btn-sm" title="Send Thank You SMS"
                           onClick={() => handleThankYou(r)}
                           style={{ padding: '4px 10px', fontSize: 12, whiteSpace: 'nowrap' }}>
-                          <MessageSquare size={12} /> Thank You
+                          <MessageCircle size={12} /> Thank You
                         </button>
                         {canEdit(r) && (
                           <button className="btn btn-ghost btn-icon" title="Edit" onClick={() => openEdit(r)}>
@@ -693,7 +693,7 @@ Markaz Knowledge City`;
                         {canDelete() && (
                           <button className="btn btn-ghost btn-icon" title="Delete"
                             onClick={() => openDelete(r)} style={{ color: 'var(--danger)' }}>
-                            <Trash2 size={14} />
+                            <Trash size={14} />
                           </button>
                         )}
                       </div>
@@ -738,7 +738,7 @@ Markaz Knowledge City`;
               {editPhotoPreview ? (
                 <img src={editPhotoPreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : (
-                <UserCircle size={32} color="var(--text-muted)" />
+                <User size={32} color="var(--text-muted)" />
               )}
             </div>
             <div style={{ flex: 1 }}>
@@ -909,7 +909,7 @@ Markaz Knowledge City`;
                 </div>
                 <div className="visit-actions">
                   <button type="button" className="btn btn-ghost btn-icon" onClick={() => removeVisit(index)} style={{ color: 'var(--danger)', padding: '4px' }}>
-                    <Trash2 size={14} />
+                    <Trash size={14} />
                   </button>
                 </div>
               </div>

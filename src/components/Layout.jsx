@@ -1,9 +1,11 @@
 import React, { useState, useEffect, createContext, useRef } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import { MoonStar, SunMedium, AlignJustify, Camera, BellRing, AlertTriangle, ShieldAlert } from 'lucide-react';
+import BottomNav from './BottomNav';
+import { Moon, Sun, Menu, Camera, BellRing, AlertTriangle, ShieldAlert, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import Modal from './Modal';
+import { supabase } from '../lib/supabase';
 import { updateUser, uploadAvatar, subscribeToAssignments, subscribeToReminders, savePushSubscription, getNotifications, subscribeToNotifications } from '../lib/supabaseDB';
 import toast from 'react-hot-toast';
 
@@ -110,7 +112,7 @@ function startUrgentSiren(customMessage) {
 
 
 export default function Layout() {
-  const { profile, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [dark, setDark] = useState(() =>
     document.documentElement.classList.contains('dark')
@@ -118,7 +120,7 @@ export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileModal, setProfileModal] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
-  const [profileForm, setProfileForm] = useState({ name: '', date_of_birth: '', phone_number: '' });
+  const [profileForm, setProfileForm] = useState({ name: '', date_of_birth: '', phone_number: '', email: '', password: '' });
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState('');
 
@@ -326,7 +328,9 @@ export default function Layout() {
     setProfileForm({
       name: profile?.name || '',
       date_of_birth: profile?.date_of_birth || '',
-      phone_number: profile?.phone_number || ''
+      phone_number: profile?.phone_number || '',
+      email: user?.email || '',
+      password: ''
     });
     setAvatarPreview(profile?.profile_picture || '');
     setAvatarFile(null);
@@ -348,6 +352,17 @@ export default function Layout() {
       if (avatarFile) {
         pictureUrl = await uploadAvatar(profile.id, avatarFile);
       }
+      
+      // Update email/password if changed
+      if (profileForm.email && profileForm.email !== user?.email) {
+        const { error } = await supabase.auth.updateUser({ email: profileForm.email });
+        if (error) throw error;
+      }
+      if (profileForm.password) {
+        const { error } = await supabase.auth.updateUser({ password: profileForm.password });
+        if (error) throw error;
+      }
+
       await updateUser(profile.id, {
         name: profileForm.name,
         date_of_birth: profileForm.date_of_birth || null,
@@ -382,7 +397,7 @@ export default function Layout() {
                 style={{ display: 'none' }}
                 id="menu-btn"
               >
-                <AlignJustify size={20} strokeWidth={1.8} />
+                <Menu size={20} strokeWidth={1.8} />
               </button>
               <style>{`@media(max-width:768px){#menu-btn{display:flex!important}}`}</style>
             </div>
@@ -412,7 +427,7 @@ export default function Layout() {
               </div>
 
               <button className="btn btn-ghost btn-icon" onClick={toggleDark} title="Toggle dark mode">
-                {dark ? <SunMedium size={19} strokeWidth={1.8} /> : <MoonStar size={18} strokeWidth={1.8} />}
+                {dark ? <Sun size={19} strokeWidth={1.8} /> : <Moon size={18} strokeWidth={1.8} />}
               </button>
 
               <div
@@ -483,6 +498,14 @@ export default function Layout() {
               <label className="form-label">Phone Number</label>
               <input type="tel" className="form-input no-icon" value={profileForm.phone_number} onChange={e => setProfileForm(f => ({ ...f, phone_number: e.target.value }))} />
             </div>
+            <div className="form-group" style={{ width: '100%', margin: 0 }}>
+              <label className="form-label">Email (Username)</label>
+              <input type="email" className="form-input no-icon" value={profileForm.email} onChange={e => setProfileForm(f => ({ ...f, email: e.target.value }))} />
+            </div>
+            <div className="form-group" style={{ width: '100%', margin: 0 }}>
+              <label className="form-label">New Password (leave blank to keep current)</label>
+              <input type="text" className="form-input no-icon" placeholder="••••••••" value={profileForm.password} onChange={e => setProfileForm(f => ({ ...f, password: e.target.value }))} />
+            </div>
           </div>
         </Modal>
 
@@ -537,6 +560,8 @@ export default function Layout() {
             75% { transform: rotate(10deg); }
           }
         `}</style>
+        
+        <BottomNav onOpenMenu={openProfile} />
       </div>
     </AssignmentContext.Provider>
   );

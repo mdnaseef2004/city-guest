@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, MapPin, Target, IndianRupee, Phone, MessageSquare, Clock, UserCircle, Car, Map, Plus, Trash2, Briefcase, Camera, FileText } from 'lucide-react';
+import { User, MapPin, Target, Wallet, Phone, MessageCircle, Clock, Image, Car, Compass, Plus, Trash, Briefcase, Camera, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import { useAuth } from '../contexts/AuthContext';
@@ -186,7 +186,7 @@ const AddGuest = () => {
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <UserCircle size={16} className="text-muted" />
+            <User size={16} className="text-muted" />
             <span className="text-muted" style={{ fontSize: '0.875rem' }}>Entered by: <strong>{profile?.name}</strong></span>
           </div>
         </div>
@@ -207,7 +207,7 @@ const AddGuest = () => {
                 {photoPreview ? (
                   <img src={photoPreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  <UserCircle size={40} color="var(--text-muted)" />
+                  <User size={40} color="var(--text-muted)" />
                 )}
               </div>
               <div style={{ flex: 1 }}>
@@ -293,7 +293,7 @@ const AddGuest = () => {
                 <div className="form-group">
                   <label className="form-label" htmlFor="state">State <span className="required">*</span></label>
                   <div className="input-wrap">
-                    <span className="input-icon"><Map size={16} /></span>
+                    <span className="input-icon"><Compass size={16} /></span>
                     <select id="state" className="form-input" value={form.state}
                       onChange={e => setForm(f => ({ ...f, state: e.target.value, district: '' }))}
                       required disabled={loading}>
@@ -324,7 +324,7 @@ const AddGuest = () => {
                 <div className="form-group">
                   <label className="form-label" htmlFor="district">District <span className="required">*</span></label>
                   <div className="input-wrap">
-                    <span className="input-icon"><Map size={16} /></span>
+                    <span className="input-icon"><Compass size={16} /></span>
                     {DISTRICTS_BY_STATE[form.state] ? (
                       <select id="district" className="form-input" value={form.district}
                         onChange={set('district')} required disabled={loading}>
@@ -354,7 +354,7 @@ const AddGuest = () => {
               <div className="form-group">
                 <label className="form-label" htmlFor="donation">Donation Amount (₹)</label>
                 <div className="input-wrap">
-                  <span className="input-icon"><IndianRupee size={16} /></span>
+                  <span className="input-icon"><Wallet size={16} /></span>
                   <input id="donation" type="number" className="form-input" placeholder="0" min="0" step="1"
                     value={form.donation_amount} onChange={set('donation_amount')} disabled={loading} />
                 </div>
@@ -433,7 +433,7 @@ const AddGuest = () => {
                     <div>
                       <label className="form-label">Visited Place</label>
                       <div className="input-wrap">
-                        <span className="input-icon"><Map size={16} /></span>
+                        <span className="input-icon"><Compass size={16} /></span>
                         <input type="text" className="form-input" placeholder="Place name"
                           value={visit.visited_place} onChange={e => handleVisitChange(index, 'visited_place', e.target.value)} disabled={loading} />
                       </div>
@@ -455,7 +455,7 @@ const AddGuest = () => {
                     </div>
                     <div className="visit-actions">
                       <button type="button" className="btn btn-ghost btn-icon" onClick={() => removeVisit(index)} disabled={loading} style={{ color: 'var(--danger)' }} title="Remove Visit">
-                        <Trash2 size={16} />
+                        <Trash size={16} />
                       </button>
                     </div>
                   </div>
@@ -491,7 +491,7 @@ const AddGuest = () => {
               <div className="form-group form-group-full">
                 <label className="form-label" htmlFor="remarks">Remarks</label>
                 <div className="input-wrap">
-                  <span className="input-icon" style={{ top: '12px', alignItems: 'flex-start' }}><MessageSquare size={16} /></span>
+                  <span className="input-icon" style={{ top: '12px', alignItems: 'flex-start' }}><MessageCircle size={16} /></span>
                   <textarea id="remarks" className="form-input" placeholder="Any additional notes..." rows={3}
                     value={form.remarks} onChange={set('remarks')} disabled={loading}
                     style={{ paddingLeft: '40px', resize: 'vertical' }} />

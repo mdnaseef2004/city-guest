@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Users, IndianRupee, UserCheck, TrendingUp, Download, FileSpreadsheet, FileText } from 'lucide-react';
+import { Users, Wallet, BadgeCheck, LineChart, Download, FileSpreadsheet, FileText } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -368,9 +368,9 @@ const Dashboard = () => {
         <>
           <div className="stats-grid">
             <StatsCard title="Total Guests" value={fmt(stats?.totalGuests)} icon={Users} color="primary" subtitle="All time" />
-            <StatsCard title="Total Donations" value={`₹${fmt(stats?.totalDonations)}`} icon={IndianRupee} color="success" subtitle="All time" />
-            <StatsCard title="Today's Guests" value={fmt(stats?.todayGuests)} icon={UserCheck} color="info" subtitle="Today" />
-            <StatsCard title="Monthly Donations" value={`₹${fmt(stats?.monthlyDonations)}`} icon={TrendingUp} color="warning" subtitle="This month" />
+            <StatsCard title="Total Donations" value={`₹${fmt(stats?.totalDonations)}`} icon={Wallet} color="success" subtitle="All time" />
+            <StatsCard title="Today's Guests" value={fmt(stats?.todayGuests)} icon={BadgeCheck} color="info" subtitle="Today" />
+            <StatsCard title="Monthly Donations" value={`₹${fmt(stats?.monthlyDonations)}`} icon={LineChart} color="warning" subtitle="This month" />
           </div>
 
           {stats?.recentPhotos?.length > 0 && (

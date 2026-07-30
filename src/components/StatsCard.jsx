@@ -39,7 +39,7 @@ const StatsCard = ({ title, value, icon: Icon, color = 'primary', trendText, spa
           background: theme.bg, color: theme.text, display: 'flex', 
           alignItems: 'center', justifyContent: 'center' 
         }}>
-          <Icon size={24} strokeWidth={2.5} />
+          <Icon size={24} strokeWidth={1.5} />
         </div>
       </div>
 
