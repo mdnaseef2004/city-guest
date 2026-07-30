@@ -230,6 +230,38 @@ export async function addGuest({ guest_name, phone_number, occupation, photo_url
   return visitData;
 }
 
+export async function bulkAddGuests(rows) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const visitsToInsert = rows.map(r => ({
+    guest_name: r.guest_name || 'Unknown',
+    phone_number: String(r.phone_number || ''),
+    occupation: r.occupation || null,
+    place: r.place || 'Unknown',
+    district: r.district || 'Unknown',
+    state: r.state || null,
+    country: r.country || null,
+    is_international: !!r.country,
+    purpose: r.purpose || 'Visit',
+    donation_amount: Number(r.donation_amount) || 0,
+    receipt_no: r.receipt_no || null,
+    picked_from: r.picked_from || '',
+    picked_date: r.picked_date || null,
+    picked_time: r.picked_time || null,
+    guest_returned: r.guest_returned || null,
+    return_date: r.return_date || null,
+    return_time: r.return_time || null,
+    handled_by: r.handled_by || '',
+    remarks: r.remarks || '',
+    created_at: r.visited_date ? new Date(r.visited_date).toISOString() : new Date().toISOString(),
+    created_by: user.id,
+  }));
+
+  const { error } = await supabase.from('guest_visits').insert(visitsToInsert);
+  if (error) throw error;
+}
+
 export async function checkDuplicateGuest(guestName) {
   const { data: { user } } = await supabase.auth.getUser();
   const today = new Date().toISOString().slice(0, 10);

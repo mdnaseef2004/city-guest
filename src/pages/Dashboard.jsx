@@ -44,7 +44,7 @@ async function exportToPDF(data, filename) {
   if (!data.length) return;
   const doc = new jsPDF('p', 'pt', 'a4');
   let logoImg = null;
-  try { logoImg = await loadImage('/IMG_2458.PNG'); } catch (e) {}
+  try { logoImg = await loadImage('/IMG_2458.PNG'); } catch (e) { }
 
   const PAGE_WIDTH = doc.internal.pageSize.getWidth();
   const MARGIN = 40;
@@ -70,7 +70,7 @@ async function exportToPDF(data, filename) {
     doc.setLineWidth(1);
     doc.line(MARGIN, titleY + 15, PAGE_WIDTH - MARGIN, titleY + 15);
   };
-  
+
   // Capture charts if they exist
   const chartsEl = document.getElementById('perf-charts');
   let chartsImg = null;
@@ -181,7 +181,7 @@ const PerfSection = ({ stats, fmt }) => {
     const now = new Date();
     if (dateFilter === 'week') {
       const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
-      startOfWeek.setHours(0,0,0,0);
+      startOfWeek.setHours(0, 0, 0, 0);
       return g.filter(x => new Date(x.created_at) >= startOfWeek);
     }
     if (dateFilter === 'month') {
@@ -279,7 +279,7 @@ const PerfSection = ({ stats, fmt }) => {
                 👑 Super Admin
               </button>
             </div>
-            
+
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <select className="form-input no-icon" value={dateFilter} onChange={e => setDateFilter(e.target.value)} style={{ padding: '6px 12px', borderRadius: 8, minWidth: 130 }}>
                 <option value="all">All Time</option>
@@ -287,14 +287,14 @@ const PerfSection = ({ stats, fmt }) => {
                 <option value="month">This Month</option>
                 <option value="custom">Custom Range</option>
               </select>
-              
+
               {dateFilter === 'custom' && (
-                <DateRangePicker 
-                  startDate={customStart} endDate={customEnd} 
-                  onStartDateChange={setCustomStart} onEndDateChange={setCustomEnd} 
+                <DateRangePicker
+                  startDate={customStart} endDate={customEnd}
+                  onStartDateChange={setCustomStart} onEndDateChange={setCustomEnd}
                 />
               )}
-              
+
               <ExportButtons
                 getData={() => rows.map(r => ({
                   [label]: r.name,
@@ -374,26 +374,44 @@ const Dashboard = () => {
           </div>
 
           {stats?.recentPhotos?.length > 0 && (
-            <div className="card mt-4">
-              <div className="card-header">
-                <h3 className="card-title">Recent Guest Photos</h3>
+            <div className="card mt-4" style={{ borderRadius: '24px', border: '1px solid rgba(0,0,0,0.03)', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)' }}>
+              <div className="card-header" style={{ borderBottom: 'none', paddingBottom: 0 }}>
+                <h3 className="card-title" style={{ fontSize: '18px', fontWeight: 700 }}>Recent Guest Photos</h3>
               </div>
               <div className="card-body">
-                <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', paddingBottom: '12px' }}>
+                <div style={{ display: 'flex', gap: '20px', overflowX: 'auto', paddingBottom: '16px', paddingTop: '8px' }} className="hide-scrollbar">
                   {stats.recentPhotos.map(guest => (
-                    <div key={guest.id} 
-                         onClick={() => { setSelectedGuest(guest); setPhotoModalOpen(true); }}
-                         style={{ cursor: 'pointer', textAlign: 'center', width: '100px', flexShrink: 0, transition: 'transform 0.2s' }}
-                         onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
-                         onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
-                      <div style={{ width: '80px', height: '80px', borderRadius: '50%', margin: '0 auto 8px', overflow: 'hidden', border: '2px solid var(--primary)', background: 'var(--surface-2)' }}>
-                        <img src={guest.photo_url} alt={guest.guest_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <div key={guest.id}
+                      onClick={() => { setSelectedGuest(guest); setPhotoModalOpen(true); }}
+                      style={{ cursor: 'pointer', textAlign: 'center', width: '88px', flexShrink: 0, transition: 'transform 0.2s' }}
+                      onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-4px)'}
+                      onMouseLeave={e => e.currentTarget.style.transform = 'none'}>
+                      <div style={{ width: '72px', height: '72px', borderRadius: '50%', margin: '0 auto 10px', overflow: 'hidden', border: '3px solid var(--primary)', background: 'var(--surface-2)', padding: '2px' }}>
+                        <div style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden' }}>
+                          <img src={guest.photo_url} alt={guest.guest_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        </div>
                       </div>
-                      <div style={{ fontSize: '12px', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {guest.guest_name}
                       </div>
                     </div>
                   ))}
+                  
+                  {/* "All Photos" option */}
+                  <div 
+                    style={{ cursor: 'pointer', textAlign: 'center', width: '88px', flexShrink: 0, transition: 'transform 0.2s' }}
+                    onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-4px)'}
+                    onMouseLeave={e => e.currentTarget.style.transform = 'none'}
+                    onClick={() => { /* Handle navigation to all photos if needed */ }}
+                  >
+                    <div style={{ width: '72px', height: '72px', borderRadius: '50%', margin: '0 auto 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed var(--border)', background: 'var(--surface-2)', color: 'var(--text-muted)' }}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    </div>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--primary)' }}>
+                      All Photos
+                    </div>
+                  </div>
+
                 </div>
               </div>
             </div>

@@ -33,26 +33,26 @@ let isAlarmActive = false;
 
 function speakAnnouncement(message) {
   if (!('speechSynthesis' in window)) return false;
-  
+
   // Cancel any stuck speech
   window.speechSynthesis.cancel();
-  
+
   const speak = () => {
     if (!isAlarmActive) return;
-    
+
     const utter = new SpeechSynthesisUtterance(message);
     utter.lang = 'en-IN';      // Indian English accent
     utter.rate = 0.9;
     utter.pitch = 1.1;
     utter.volume = 1.0;
-    
+
     // Loop speech every 3 seconds if alarm is still active
     utter.onend = () => {
       if (isAlarmActive) {
         setTimeout(speak, 3000);
       }
     };
-    
+
     utter.onerror = (e) => {
       console.warn('Speech synthesis error:', e);
       if (isAlarmActive) {
@@ -62,7 +62,7 @@ function speakAnnouncement(message) {
 
     window.speechSynthesis.speak(utter);
   };
-  
+
   speak();
   return true;
 }
@@ -71,7 +71,7 @@ function stopAlarm() {
   isAlarmActive = false;
   // Stop any playing oscillators
   currentOscillators.forEach(osc => {
-    try { osc.stop(); } catch(e){}
+    try { osc.stop(); } catch (e) { }
   });
   currentOscillators = [];
   // Stop speech
@@ -115,17 +115,17 @@ export default function Layout() {
   const [dark, setDark] = useState(() =>
     document.documentElement.classList.contains('dark')
   );
-  const [sidebarOpen, setSidebarOpen]     = useState(false);
-  const [profileModal, setProfileModal]   = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [profileModal, setProfileModal] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
-  const [profileForm, setProfileForm]     = useState({ name: '', date_of_birth: '', phone_number: '' });
-  const [avatarFile, setAvatarFile]       = useState(null);
+  const [profileForm, setProfileForm] = useState({ name: '', date_of_birth: '', phone_number: '' });
+  const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState('');
-  
-  const [pendingCount, setPendingCount]   = useState(0);
-  const [unreadCount, setUnreadCount]     = useState(0);
-  const [notifFlash, setNotifFlash]       = useState(false);
-  
+
+  const [pendingCount, setPendingCount] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifFlash, setNotifFlash] = useState(false);
+
   // Urgent Alarm State
   const [urgentAlarmActive, setUrgentAlarmActive] = useState(false);
   const [urgentGuest, setUrgentGuest] = useState('');
@@ -283,8 +283,8 @@ export default function Layout() {
       }
     });
 
-    return () => { 
-      channel.unsubscribe(); 
+    return () => {
+      channel.unsubscribe();
       reminderChannel.unsubscribe();
       stopAlarm();
     };
@@ -293,7 +293,7 @@ export default function Layout() {
   // Notifications fetching
   useEffect(() => {
     if (!profile?.id) return;
-    
+
     const fetchUnread = () => {
       getNotifications().then(data => {
         setUnreadCount(data.filter(n => !n.is_read).length);
@@ -504,8 +504,8 @@ export default function Layout() {
               <p style={{ color: '#64748b', fontSize: 16, marginBottom: 24 }}>
                 <strong>{urgentGuest}</strong> has been assigned to you. This requires your immediate attention!
               </p>
-              <button 
-                className="btn btn-danger btn-full" 
+              <button
+                className="btn btn-danger btn-full"
                 style={{ padding: '16px 24px', fontSize: 18, textTransform: 'uppercase', letterSpacing: 1 }}
                 onClick={acknowledgeAlarm}
               >

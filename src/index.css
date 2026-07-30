@@ -1,25 +1,25 @@
 /* ─── Google Fonts ─────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 @import "tailwindcss";
 
 /* ─── CSS Custom Properties ────────────────────────────── */
 :root {
-  --font-heading: 'Poppins', sans-serif;
-  --font: 'Inter', sans-serif;
+  --font-heading: 'Plus Jakarta Sans', sans-serif;
+  --font: 'Plus Jakarta Sans', sans-serif;
 
   /* Light mode - Premium Emerald Theme */
-  --bg: #f2fbf5;
-  --bg-pattern: radial-gradient(#d1fae5 1px, transparent 1px);
+  --bg: #f8fafc;
+  --bg-pattern: none;
   --surface: #ffffff;
-  --surface-2: #f8fafc;
+  --surface-2: #f1f5f9;
   --border: #e2e8f0;
   --text: #0f172a;
   --text-muted: #64748b;
 
   --primary: #059669;
   --primary-dark: #047857;
-  --primary-light: #ecfdf5;
+  --primary-light: #d1fae5;
   --primary-gradient: linear-gradient(135deg, #059669 0%, #10b981 100%);
 
   --success: #10b981;
@@ -1104,4 +1104,11 @@ tbody td strong {
 
 .mb-4 {
   margin-bottom: 20px;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

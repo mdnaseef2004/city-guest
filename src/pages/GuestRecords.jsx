@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, X, Pencil, Trash2, ChevronLeft, ChevronRight, Plus, Map, Download, MessageSquare, FileSpreadsheet, FileText, Camera, UserCircle } from 'lucide-react';
+import { Search, X, Pencil, Trash2, ChevronLeft, ChevronRight, Plus, Map, Download, Upload, MessageSquare, FileSpreadsheet, FileText, Camera, UserCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import ImageCropper from '../components/ImageCropper';
 import DateRangePicker from '../components/DateRangePicker';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { getGuests, getUsers, getUniquePlaces, getUniqueDistricts, getUniquePurposes, getUniqueHandledBy, updateGuest, deleteGuest, uploadGuestPhoto } from '../lib/supabaseDB';
+import { getGuests, getUsers, getUniquePlaces, getUniqueDistricts, getUniquePurposes, getUniqueHandledBy, updateGuest, deleteGuest, uploadGuestPhoto, bulkAddGuests } from '../lib/supabaseDB';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -116,6 +116,76 @@ const GuestRecords = () => {
   const [handledByList, setHandledByList] = useState([]);
 
   const fetchRecordsRef = useRef(null);
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws);
+        
+        if (data.length === 0) {
+          toast.error("File is empty");
+          return;
+        }
+
+        const t = toast.loading("Uploading old data...");
+        const rowsToInsert = data.map(row => {
+          const visitedDateRaw = row['Visited Date'] || row['Date'] || row['visited_date'] || row['Date Entered'];
+          
+          let parsedDate = null;
+          if (visitedDateRaw) {
+            if (typeof visitedDateRaw === 'number') {
+              parsedDate = new Date(Math.round((visitedDateRaw - 25569) * 86400 * 1000));
+            } else {
+              parsedDate = new Date(visitedDateRaw);
+            }
+          }
+
+          return {
+            guest_name: row['Guest Name'] || row['Name'] || row['guest_name'],
+            phone_number: row['Phone Number'] || row['Phone'] || row['phone_number'],
+            occupation: row['Occupation'] || row['occupation'],
+            place: row['Address'] || row['Place'] || row['place'],
+            district: row['District'] || row['district'],
+            state: row['State'] || row['state'],
+            country: row['Country'] || row['country'],
+            purpose: row['Purpose'] || row['purpose'],
+            donation_amount: row['Donation (₹)'] || row['Donation'] || row['donation_amount'],
+            receipt_no: row['Receipt No'] || row['receipt_no'],
+            picked_date: row['Picked Date'] || row['picked_date'],
+            picked_from: row['Picked From'] || row['picked_from'],
+            picked_time: row['Picked Time'] || row['picked_time'],
+            guest_returned: row['Returned'] || row['guest_returned'],
+            return_date: row['Return Date'] || row['return_date'],
+            return_time: row['Return Time'] || row['return_time'],
+            remarks: row['Remarks'] || row['remarks'],
+            handled_by: row['Handled By'] || row['handled_by'],
+            visited_date: parsedDate && !isNaN(parsedDate.getTime()) ? parsedDate.toISOString() : undefined,
+          };
+        }).filter(r => r.guest_name);
+
+        if (rowsToInsert.length === 0) {
+          toast.error("No valid guests found in file (Missing Guest Name).", { id: t });
+          return;
+        }
+
+        await bulkAddGuests(rowsToInsert);
+        toast.success(`Successfully uploaded ${rowsToInsert.length} guests!`, { id: t });
+        fetchRecords();
+      } catch (err) {
+        toast.error("Upload failed: " + err.message);
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = '';
+  };
 
   const fetchRecords = useCallback(async () => {
     setLoading(true);
@@ -424,6 +494,11 @@ Markaz Knowledge City`;
           <p className="page-subtitle">{total} record{total !== 1 ? 's' : ''} found</p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+          <input type="file" accept=".csv, .xlsx" style={{ display: 'none' }} id="upload-old-data" onChange={handleFileUpload} />
+          <button className="btn btn-primary btn-sm" onClick={() => document.getElementById('upload-old-data').click()}
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Upload size={15} /> Upload CSV
+          </button>
           <button className="btn btn-secondary btn-sm" onClick={() => handleExport('pdf')}
             style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <FileText size={15} /> PDF
